@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="/" class="btn btn-outline-secondary rounded-pill mb-3 text-white border-secondary">
+        <i class="fa-solid fa-arrow-left me-2"></i>Back to Dashboard
+    </a>
+    <h2 class="mb-0">Retailer Profile: <span class="text-primary" id="retailerTitle">Loading...</span></h2>
+    <div id="retailerLocation" class="text-secondary mt-2"></div>
+</div>
+
+<div id="loadingState" class="text-center py-5">
+    <div class="spinner-border text-primary mb-3" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+    <h5 class="text-secondary">Fetching Retailer Data...</h5>
+</div>
+
+<div id="contentArea" class="d-none">
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card p-4 h-100 border-0 text-center justify-content-center" style="background: rgba(30, 41, 59, 0.6);">
+                <h4 class="text-secondary mb-3">AI Health Score</h4>
+                <div class="display-1 fw-bold mb-2" id="healthScoreValue">--</div>
+                <div class="mb-3"><span class="badge p-2 fs-6" id="healthScoreStatus">--</span></div>
+                
+                <div class="row text-start small border-top border-secondary border-opacity-25 pt-3 mt-auto">
+                    <div class="col-6 mb-2"><i class="fa-solid fa-chart-line text-success me-1"></i> Sales: <span id="hsSales" class="fw-bold text-white">--</span><span class="text-secondary opacity-75">/30</span></div>
+                    <div class="col-6 mb-2"><i class="fa-solid fa-boxes-stacked text-warning me-1"></i> Stock: <span id="hsInv" class="fw-bold text-white">--</span><span class="text-secondary opacity-75">/25</span></div>
+                    <div class="col-6"><i class="fa-solid fa-shoe-prints text-info me-1"></i> Visits: <span id="hsVisits" class="fw-bold text-white">--</span><span class="text-secondary opacity-75">/20</span></div>
+                    <div class="col-6"><i class="fa-solid fa-bullhorn text-danger me-1"></i> Promo: <span id="hsCampaign" class="fw-bold text-white">--</span><span class="text-secondary opacity-75">/25</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="row h-100">
+                <div class="col-md-4 mb-3 mb-md-0">
+                    <div class="metric-card h-100 mb-0 d-flex flex-column justify-content-center">
+                        <div class="metric-label">Total Unit Sales</div>
+                        <div class="metric-value" id="totalSales">--</div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3 mb-md-0">
+                    <div class="metric-card h-100 mb-0 d-flex flex-column justify-content-center">
+                        <div class="metric-label">Total Visits</div>
+                        <div class="metric-value" id="visitCount">--</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="metric-card h-100 mb-0 d-flex flex-column justify-content-center" style="border-color: rgba(239, 68, 68, 0.4);">
+                        <div class="metric-label text-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i> Churn Risk</div>
+                        <div class="metric-value text-danger" id="churnRisk">--%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card p-4 border-0">
+                <h4 class="mb-4"><i class="fa-solid fa-chart-line text-primary me-2"></i> Inventory Trend</h4>
+                <canvas id="inventoryChart" height="80"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="card p-4 border-0">
+        <h4 class="mb-4"><i class="fa-solid fa-boxes-stacked text-primary me-2"></i> Recent Inventory Logs</h4>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Product SKU</th>
+                        <th>Quantity</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="inventoryTableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const RETAILER_ID = "{{ retailer_id }}";
+    
+    document.addEventListener('DOMContentLoaded', async () => {
+        document.getElementById('retailerTitle').innerText = RETAILER_ID;
+        
+        try {
+            const response = await fetch(`/api/retailer/${RETAILER_ID}`);
+            const data = await response.json();
+            
+            document.getElementById('loadingState').classList.add('d-none');
+            document.getElementById('contentArea').classList.remove('d-none');
+            
+            // Location
+            if (data.details) {
+                document.getElementById('retailerLocation').innerHTML = `<i class="fa-solid fa-location-dot me-1"></i> ${data.details.district || 'Unknown District'}, ${data.details.state || 'Unknown State'} <span class="badge bg-secondary ms-2">${data.details.territory_id || 'N/A'}</span>`;
+            }
+            
+            // Health
+            document.getElementById('healthScoreValue').innerText = data.health_score.score;
+            document.getElementById('healthScoreValue').classList.add('text-' + data.health_score.color);
+            
+            const badge = document.getElementById('healthScoreStatus');
+            badge.innerText = data.health_score.status;
+            badge.classList.add('bg-' + data.health_score.color, 'bg-opacity-25', 'text-' + data.health_score.color, 'border', 'border-' + data.health_score.color);
+            
+            // Health Breakdown
+            if (data.health_score.breakdown) {
+                document.getElementById('hsSales').innerText = data.health_score.breakdown.sales;
+                document.getElementById('hsInv').innerText = data.health_score.breakdown.inventory;
+                document.getElementById('hsVisits').innerText = data.health_score.breakdown.visits;
+                document.getElementById('hsCampaign').innerText = data.health_score.breakdown.campaigns;
+            }
+            
+            // Stats
+            document.getElementById('totalSales').innerText = data.total_sales;
+            document.getElementById('visitCount').innerText = data.visit_count;
+            if (data.health_score.churn_risk !== undefined) {
+                document.getElementById('churnRisk').innerText = data.health_score.churn_risk + '%';
+            }
+            
+            // Inventory Table
+            const tbody = document.getElementById('inventoryTableBody');
+            let rows = '';
+            
+            if (data.inventory_records.length === 0) {
+                rows = '<tr><td colspan="4" class="text-center text-secondary py-4">No inventory data available</td></tr>';
+            } else {
+                data.inventory_records.forEach(record => {
+                    const dateObj = new Date(record.week_end_date);
+                    const formattedDate = dateObj.toLocaleDateString();
+                    
+                    let qtyBadge = '';
+                    if (record.sku_qty === 0) qtyBadge = '<span class="badge bg-danger bg-opacity-25 text-danger border border-danger border-opacity-50">Out of Stock</span>';
+                    else if (record.sku_qty < 5) qtyBadge = '<span class="badge bg-warning bg-opacity-25 text-warning border border-warning border-opacity-50">Low Stock</span>';
+                    else qtyBadge = '<span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50">In Stock</span>';
+                    
+                    rows += `
+                        <tr>
+                            <td class="text-secondary">${formattedDate}</td>
+                            <td class="fw-bold text-primary">${record.sku_name || record.sku_id || 'N/A'}</td>
+                            <td><span class="badge bg-dark border border-secondary text-white px-2 py-1">${record.sku_qty} Units</span></td>
+                            <td>${qtyBadge}</td>
+                        </tr>
+                    `;
+                });
+            }
+            tbody.innerHTML = rows;
+
+            // Chart.js Setup
+            if (data.inventory_records.length > 0) {
+                const chartData = [...data.inventory_records].reverse();
+                const labels = chartData.map(r => new Date(r.week_end_date).toLocaleDateString());
+                const quantities = chartData.map(r => r.sku_qty);
+                
+                const ctx = document.getElementById('inventoryChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Inventory Quantity',
+                            data: quantities,
+                            borderColor: '#0d6efd',
+                            backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                            borderWidth: 3,
+                            pointBackgroundColor: '#0d6efd',
+                            pointRadius: 4,
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: 'rgba(255,255,255,0.05)' },
+                                ticks: { color: '#94a3b8' }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#94a3b8' }
+                            }
+                        }
+                    }
+                });
+            }
+            
+        } catch (error) {
+            document.getElementById('loadingState').innerHTML = `<div class="alert alert-danger">Failed to load retailer data.</div>`;
+        }
+    });
+</script>
+{% endblock %}

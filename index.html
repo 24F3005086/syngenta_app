@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="row mb-4">
+
+    <div class="col-md-3">
+        <div class="metric-card">
+            <div>Total Retailers</div>
+            <div class="metric-value">4000</div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="metric-card">
+            <div>High Priority</div>
+            <div class="metric-value">342</div>
+        </div>
+    </div>
+
+</div>
+
+<div class="card p-4">
+
+    <div class="d-flex justify-content-between mb-4">
+        <h3>🎯 AI Retail Prioritization</h3>
+
+        <button class="btn btn-primary" onclick="loadRecommendations()">
+            Generate AI Recommendations
+        </button>
+    </div>
+
+    <div id="recommendationArea"></div>
+
+</div>
+
+<!-- CHATBOT -->
+
+<div class="chatbot-container">
+
+    <div class="chat-header">
+        🤖 Syngenta AI Copilot
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+        <div>AI Assistant Ready...</div>
+    </div>
+
+    <div class="chat-input">
+        <input type="text" id="chatInput">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+</div>
+
+<script>
+
+async function loadRecommendations() {
+
+    const response = await fetch('/api/get-recommendations', {
+        method:'POST',
+        headers:{
+            'Content-Type':'application/json'
+        },
+        body:JSON.stringify({})
+    })
+
+    const data = await response.json()
+
+    let html = ''
+
+    data.top_retailers.forEach(retailer => {
+
+        html += `
+        <div class="card p-4 mb-3">
+
+            <div class="d-flex justify-content-between">
+
+                <div>
+                    <h4>${retailer.retailer_id}</h4>
+                    <div>${retailer.reason.join(', ')}</div>
+                </div>
+
+                <div>
+                    <span class="badge bg-danger">
+                        Priority ${retailer.priority_score}
+                    </span>
+                </div>
+
+            </div>
+
+            <div class="mt-3">
+                <a href="/retailer/${retailer.retailer_id}" class="btn btn-primary">
+                    Open Intelligence Profile
+                </a>
+            </div>
+
+        </div>
+        `
+    })
+
+    document.getElementById('recommendationArea').innerHTML = html
+}
+
+async function sendMessage() {
+
+    const input = document.getElementById('chatInput')
+
+    const response = await fetch('/api/chatbot', {
+        method:'POST',
+        headers:{
+            'Content-Type':'application/json'
+        },
+        body:JSON.stringify({
+            message:input.value
+        })
+    })
+
+    const data = await response.json()
+
+    document.getElementById('chatMessages').innerHTML += `
+        <div><strong>AI:</strong> ${data.response}</div>
+    `
+
+    input.value = ''
+}
+
+</script>
+
+{% endblock %}

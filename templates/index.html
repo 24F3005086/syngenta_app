@@ -1,274 +1,256 @@
-{% extends "base.html" %}
-
-{% block title %}Syngenta Field Force Intelligence - Home{% endblock %}
+{% extends 'base.html' %}
 
 {% block content %}
 
-<div class="row">
-    <div class="col-md-4">
-        <div class="card shadow">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">📋 Rep Information</h5>
-            </div>
-            <div class="card-body">
-                {% if error %}
-                <div class="alert alert-danger">{{ error }}</div>
-                {% else %}
-                
-                <div class="mb-3">
-                    <label for="repId" class="form-label">🔍 Select Rep ID</label>
-                    <select class="form-select" id="repId">
-                        <option value="">-- Select a rep --</option>
-                        {% for rep in rep_list %}
-                        <option value="{{ rep }}">{{ rep }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="mb-3">
-                    <label for="date" class="form-label">📅 Select Date</label>
-                    <input type="date" class="form-control" id="date" value="2026-04-30" 
-                           min="2025-10-01" max="2026-04-30">
-                </div>
-
-                <div class="mb-3">
-                    <label for="numRetailers" class="form-label">📊 Number of Retailers</label>
-                    <input type="range" class="form-range" id="numRetailers" min="5" max="20" value="10">
-                    <small class="text-muted">Show: <span id="numRetailersValue">10</span> retailers</small>
-                </div>
-
-                <button class="btn btn-primary w-100" id="generateBtn">
-                    🚀 Generate Recommendations
-                </button>
-
-                {% endif %}
-            </div>
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="metric-card">
+            <div class="metric-label">Total Retailers</div>
+            <div class="metric-value" id="statRetailers">--</div>
         </div>
-
-        {% if not error %}
-        <div class="card shadow mt-3">
-            <div class="card-header bg-info text-white">
-                <h5 class="mb-0">💡 How It Works</h5>
-            </div>
-            <div class="card-body">
-                <small>
-                    <strong>4 Signals:</strong><br>
-                    ✓ Inventory Status (40 pts)<br>
-                    ✓ Visit Recency (25 pts)<br>
-                    ✓ Sales Velocity (20 pts)<br>
-                    ✓ Promotion Activity (15 pts)<br>
-                    <br>
-                    <strong>Total Score: 0-100</strong><br>
-                    Higher = More urgent to visit
-                </small>
-            </div>
-        </div>
-        {% endif %}
     </div>
-
-    <!-- Results Section -->
-    <div class="col-md-8">
-        <div id="results" style="display:none;">
-            <div id="loadingSpinner" class="text-center">
-                <div class="spinner-border" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-            </div>
+    <div class="col-md-3">
+        <div class="metric-card">
+            <div class="metric-label">High Priority</div>
+            <div class="metric-value text-warning" id="statPriority">--</div>
         </div>
-
-        {% if not error %}
-        <div id="noResults" class="alert alert-info">
-            <strong>👈 Select a rep and date to generate recommendations</strong>
+    </div>
+    <div class="col-md-3">
+        <div class="metric-card">
+            <div class="metric-label">Critical Alerts</div>
+            <div class="metric-value text-danger" id="statAlerts">--</div>
         </div>
-        {% endif %}
+    </div>
+    <div class="col-md-3">
+        <div class="metric-card">
+            <div class="metric-label">Revenue Opportunity</div>
+            <div class="metric-value text-success" id="statRevenue">--</div>
+        </div>
     </div>
 </div>
 
-{% endblock %}
+<div class="row mb-5">
+    <div class="col-12">
+        <div class="card p-4 border-0">
+            <h3 class="mb-4"><i class="fa-solid fa-map-location-dot text-info me-2"></i> Geo-Spatial Intelligence</h3>
+            <div id="retailerMap" style="height: 450px; border-radius: 12px; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.1);"></div>
+        </div>
+    </div>
+</div>
 
-{% block scripts %}
+<div class="row mb-5">
+    <div class="col-lg-8 mb-4 mb-lg-0">
+        <div class="card p-4 border-0 h-100">
+            <h3 class="mb-4"><i class="fa-solid fa-triangle-exclamation text-danger me-2"></i> System Alerts</h3>
+            <div id="alertsArea" class="d-flex flex-column gap-3 pe-2" style="max-height: 400px; overflow-y: auto;">
+                <div class="text-secondary text-center py-4">Loading alerts...</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card p-4 border-0 h-100" style="background: linear-gradient(145deg, rgba(30,41,59,0.8), rgba(15,23,42,0.9)); border: 1px solid rgba(139,92,246,0.3) !important;">
+            <h3 class="mb-3"><i class="fa-solid fa-cloud-sun text-warning me-2"></i> Demand Forecast</h3>
+            <div id="seasonName" class="text-primary mb-4 fw-bold">Loading...</div>
+            <div id="forecastArea" class="d-flex flex-column gap-3 pe-2" style="max-height: 330px; overflow-y: auto;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card p-4 mb-5 border-0">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <h3 class="mb-0"><i class="fa-solid fa-bullseye text-primary me-2"></i> AI Retail Prioritization</h3>
+        <button class="btn btn-primary shadow-sm" onclick="loadRecommendations()" id="generateBtn">
+            <i class="fa-solid fa-wand-magic-sparkles me-2"></i> Generate AI Recommendations
+        </button>
+    </div>
+
+    <div id="loadingState" class="text-center py-5 d-none">
+        <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <h5 class="text-secondary">AI is analyzing retail points...</h5>
+    </div>
+
+    <div id="recommendationArea" class="row"></div>
+</div>
+
 <script>
-document.getElementById('numRetailers').addEventListener('input', function() {
-    document.getElementById('numRetailersValue').textContent = this.value;
-});
-
-document.getElementById('generateBtn').addEventListener('click', function() {
-    const repId = document.getElementById('repId').value;
-    const date = document.getElementById('date').value;
-    const numRetailers = document.getElementById('numRetailers').value;
-
-    if (!repId) {
-        alert('Please select a Rep ID');
-        return;
-    }
-
-    // Show loading
-    document.getElementById('noResults').style.display = 'none';
-    document.getElementById('results').style.display = 'block';
-    document.getElementById('loadingSpinner').innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>';
-
-    // Fetch recommendations
-    fetch('/api/get-recommendations', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            rep_id: repId,
-            date: date,
-            num_retailers: parseInt(numRetailers)
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.error) {
-            document.getElementById('loadingSpinner').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+document.addEventListener('DOMContentLoaded', async () => {
+    // Load dashboard stats
+    try {
+        const res = await fetch('/api/dashboard-stats');
+        const stats = await res.json();
+        document.getElementById('statRetailers').innerText = stats.total_retailers.toLocaleString();
+        document.getElementById('statPriority').innerText = stats.high_priority.toLocaleString();
+        document.getElementById('statAlerts').innerText = stats.critical_alerts.toLocaleString();
+        document.getElementById('statRevenue').innerText = '₹' + (stats.revenue_opportunity / 1000000).toFixed(1) + 'M';
+    } catch(e) {}
+    
+    // Load alerts
+    try {
+        const res = await fetch('/api/alerts');
+        const data = await res.json();
+        let alertsHtml = '';
+        if (data.alerts.length === 0) {
+            alertsHtml = '<div class="text-success text-center py-4"><i class="fa-solid fa-check-circle fa-2x mb-2"></i><br>All systems nominal. No alerts.</div>';
         } else {
-            displayRecommendations(data);
+            data.alerts.forEach(alert => {
+                let badgeClass = alert.severity === 'High' ? 'bg-danger' : 'bg-warning text-dark';
+                let icon = alert.type === 'OOS Streak' ? 'fa-box-open' : (alert.type === 'Sales Drop' ? 'fa-arrow-trend-down' : 'fa-store-slash');
+                
+                let waText = encodeURIComponent(`URGENT: ${alert.type} at ${alert.retailer_id}. ${alert.message}. Please take action immediately.`);
+                alertsHtml += `
+                <div class="p-3 rounded" style="background: rgba(255,255,255,0.05); border-left: 4px solid ${alert.severity === 'High' ? 'var(--danger)' : 'var(--warning)'};">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="fw-bold"><i class="fa-solid ${icon} me-2 text-secondary"></i>${alert.type}</div>
+                        <span class="badge ${badgeClass}">${alert.severity}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-end mt-2">
+                        <div>
+                            <div class="text-white mb-1"><a href="/retailer/${alert.retailer_id}" class="text-info text-decoration-none fw-bold">${alert.retailer_id}</a></div>
+                            <div class="text-secondary small">${alert.message}</div>
+                        </div>
+                        <a href="https://wa.me/?text=${waText}" target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-3">
+                            <i class="fa-brands fa-whatsapp me-1"></i> Resolve
+                        </a>
+                    </div>
+                </div>`;
+            });
         }
-    })
-    .catch(error => {
-        document.getElementById('loadingSpinner').innerHTML = `<div class="alert alert-danger">Error: ${error}</div>`;
-    });
-});
-
-function displayRecommendations(data) {
-    let html = '';
-
-    // Header info
-    html += `
-        <div class="row mb-3">
-            <div class="col-md-3">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h6 class="text-muted">Rep ID</h6>
-                        <h5>${data.rep_id}</h5>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h6 class="text-muted">Territory</h6>
-                        <h5>${data.rep_name}</h5>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h6 class="text-muted">State</h6>
-                        <h5>${data.state}</h5>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <h6 class="text-muted">Date</h6>
-                        <h5>${data.date}</h5>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <h4 class="mb-3">🎯 Top ${data.num_retailers} Retailers to Visit</h4>
-    `;
-
-    // Retailer cards
-    data.top_retailers.forEach((retailer, idx) => {
-        const action = data.actions[retailer.retailer_id];
-        const score = retailer.score;
+        document.getElementById('alertsArea').innerHTML = alertsHtml;
+    } catch(e) {}
+    
+    // Initialize Map
+    try {
+        const mapRes = await fetch('/api/map-data');
+        const mapData = await mapRes.json();
         
-        let urgencyBadge = '';
-        if (score >= 70) {
-            urgencyBadge = '<span class="badge bg-danger">CRITICAL</span>';
-        } else if (score >= 40) {
-            urgencyBadge = '<span class="badge bg-warning text-dark">HIGH</span>';
-        } else {
-            urgencyBadge = '<span class="badge bg-success">LOW</span>';
-        }
+        const map = L.map('retailerMap').setView([22.5, 78.5], 5);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(map);
 
-        html += `
-            <div class="card mb-3 retailer-card">
-                <div class="card-header bg-light">
-                    <div class="row align-items-center">
-                        <div class="col">
-                            <h5 class="mb-0">${idx + 1}. ${retailer.retailer_id} ${urgencyBadge}</h5>
+        mapData.map_data.forEach(m => {
+            let color = m.status === 'EXCELLENT' ? '#10b981' : (m.status === 'GOOD' ? '#f59e0b' : '#ef4444');
+            let marker = L.circleMarker([m.lat, m.lng], {
+                radius: 6,
+                fillColor: color,
+                color: '#fff',
+                weight: 1,
+                opacity: 1,
+                fillOpacity: 0.8
+            }).addTo(map);
+            
+            marker.bindPopup(`
+                <div style="color: #333;">
+                    <b><a href="/retailer/${m.retailer_id}" style="color: #3b82f6;">${m.retailer_id}</a></b><br>
+                    Score: ${m.score} (${m.status})
+                </div>
+            `);
+        });
+    } catch(e) {
+        console.error("Map load failed", e);
+    }
+    
+    // Load forecast
+    try {
+        const res = await fetch('/api/forecast');
+        const data = await res.json();
+        document.getElementById('seasonName').innerText = `${data.season} (${data.month})`;
+        
+        let forecastHtml = '';
+        data.forecast.forEach(f => {
+            let demandClass = f.demand === 'HIGH' ? 'text-danger border-danger' : (f.demand === 'MEDIUM' ? 'text-warning border-warning' : 'text-success border-success');
+            forecastHtml += `
+            <div class="p-3 rounded border border-secondary border-opacity-25" style="background: rgba(0,0,0,0.2);">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="fw-bold">${f.product}</div>
+                    <span class="badge bg-secondary bg-opacity-25 ${demandClass} border border-opacity-50">${f.demand} DEMAND</span>
+                </div>
+                <div class="text-secondary small mb-1"><i class="fa-solid fa-seedling me-1"></i> Crop: ${f.crop}</div>
+                <div class="small text-white opacity-75">${f.insight}</div>
+            </div>`;
+        });
+        document.getElementById('forecastArea').innerHTML = forecastHtml;
+    } catch(e) {}
+    
+    // Auto load recommendations
+    loadRecommendations();
+});
+
+async function loadRecommendations() {
+    const btn = document.getElementById('generateBtn');
+    const loadingState = document.getElementById('loadingState');
+    const recommendationArea = document.getElementById('recommendationArea');
+    
+    btn.disabled = true;
+    recommendationArea.innerHTML = '';
+    loadingState.classList.remove('d-none');
+
+    try {
+        const response = await fetch('/api/get-recommendations', {
+            method:'POST',
+            headers:{
+                'Content-Type':'application/json'
+            },
+            body:JSON.stringify({})
+        });
+
+        const data = await response.json();
+        
+        loadingState.classList.add('d-none');
+        
+        let html = '';
+        data.top_retailers.forEach((retailer, index) => {
+            const delay = index * 0.1;
+            
+            let statusBadge = '';
+            if (retailer.health.status === 'EXCELLENT') statusBadge = 'bg-success';
+            else if (retailer.health.status === 'GOOD') statusBadge = 'bg-warning';
+            else statusBadge = 'bg-danger';
+
+            html += `
+            <div class="col-md-6 col-lg-4 mb-4" style="animation: fadeIn 0.5s ease ${delay}s both;">
+                <div class="card h-100 p-4 border-0" style="background: rgba(30, 41, 59, 0.4);">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h4 class="mb-1 text-white">${retailer.retailer_id}</h4>
+                            <span class="badge ${statusBadge} bg-opacity-25 text-${retailer.health.color} border border-${retailer.health.color} border-opacity-50">
+                                Health: ${retailer.health.status} (${retailer.health.score})
+                            </span>
                         </div>
-                        <div class="col-auto">
-                            <strong>Score: ${score.toFixed(0)}/100</strong>
+                        <div class="text-end">
+                            <span class="badge bg-danger p-2 fs-6">
+                                Priority ${retailer.priority_score}
+                            </span>
                         </div>
+                    </div>
+                    
+                    <div class="text-secondary mb-4 small flex-grow-1">
+                        <strong>AI Insights:</strong><br>
+                        ${retailer.reason.map(r => `<i class="fa-solid fa-angle-right me-1 text-primary"></i>${r}`).join('<br>')}
+                    </div>
+
+                    <div class="mt-auto pt-3 border-top border-secondary border-opacity-25">
+                        <a href="/retailer/${retailer.retailer_id}" class="btn btn-outline-primary w-100 rounded-pill">
+                            Open Intelligence Profile
+                        </a>
                     </div>
                 </div>
-                <div class="card-body">
-                    <!-- Score bar -->
-                    <div class="progress mb-3" style="height: 25px;">
-                        <div class="progress-bar" role="progressbar" style="width: ${score}%" aria-valuenow="${score}" aria-valuemin="0" aria-valuemax="100">
-                            ${score.toFixed(0)}%
-                        </div>
-                    </div>
-
-                    <!-- Breakdown -->
-                    <div class="row mb-3">
-                        <div class="col-md-3">
-                            <small>
-                                <strong>📦 Inventory</strong><br>
-                                ${retailer.breakdown.inventory.points} pts<br>
-                                <span class="text-muted">${retailer.breakdown.inventory.reason}</span>
-                            </small>
-                        </div>
-                        <div class="col-md-3">
-                            <small>
-                                <strong>📅 Recency</strong><br>
-                                ${retailer.breakdown.visit_recency.points} pts<br>
-                                <span class="text-muted">${retailer.breakdown.visit_recency.reason}</span>
-                            </small>
-                        </div>
-                        <div class="col-md-3">
-                            <small>
-                                <strong>📊 Velocity</strong><br>
-                                ${retailer.breakdown.sales_velocity.points} pts<br>
-                                <span class="text-muted">${retailer.breakdown.sales_velocity.reason}</span>
-                            </small>
-                        </div>
-                        <div class="col-md-3">
-                            <small>
-                                <strong>🎯 Promo</strong><br>
-                                ${retailer.breakdown.promotion.points} pts<br>
-                                <span class="text-muted">${retailer.breakdown.promotion.reason}</span>
-                            </small>
-                        </div>
-                    </div>
-
-                    <!-- Action -->
-                    <div class="alert alert-${action.color}" role="alert">
-                        <strong>${action.action}</strong><br>
-                        ${action.product ? `Product: <strong>${action.product}</strong><br>` : ''}
-                        Reason: ${action.reason}
-                    </div>
-                </div>
             </div>
-        `;
-    });
+            `;
+        });
 
-    // Download buttons
-    html += `
-        <div class="row mt-4">
-            <div class="col-md-6">
-                <a href="/api/export/${data.rep_id}/${data.date}" class="btn btn-success w-100" download>
-                    📥 Download as JSON
-                </a>
-            </div>
-            <div class="col-md-6">
-                <button class="btn btn-info w-100" onclick="alert('CSV export available in production')">
-                    📊 Download as CSV
-                </button>
-            </div>
-        </div>
-    `;
-
-    document.getElementById('loadingSpinner').innerHTML = html;
+        recommendationArea.innerHTML = html;
+    } catch (error) {
+        loadingState.classList.add('d-none');
+        recommendationArea.innerHTML = `<div class="alert alert-danger">Error loading recommendations.</div>`;
+    } finally {
+        btn.disabled = false;
+    }
 }
 </script>
 {% endblock %}
