@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let badgeClass = alert.severity === 'High' ? 'bg-danger' : 'bg-warning text-dark';
                 let icon = alert.type === 'OOS Streak' ? 'fa-box-open' : (alert.type === 'Sales Drop' ? 'fa-arrow-trend-down' : 'fa-store-slash');
                 
-                let waText = encodeURIComponent(`URGENT: ${alert.type} at ${alert.retailer_id}. ${alert.message}. Please take action immediately.`);
+                let escapedMsg = alert.message.replace(/'/g, "\\'");
                 alertsHtml += `
                 <div class="p-3 rounded" style="background: rgba(255,255,255,0.05); border-left: 4px solid ${alert.severity === 'High' ? 'var(--danger)' : 'var(--warning)'};">
                     <div class="d-flex justify-content-between align-items-start mb-2">
@@ -157,9 +157,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <div class="text-white mb-1"><a href="/retailer/${alert.retailer_id}" class="text-info text-decoration-none fw-bold">${alert.retailer_id}</a></div>
                             <div class="text-secondary small">${alert.message}</div>
                         </div>
-                        <a href="https://wa.me/?text=${waText}" target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-3">
+                        <button onclick="sendAutoWhatsApp('${alert.retailer_id}', '${alert.type}', '${escapedMsg}', this)" class="btn btn-sm btn-outline-success rounded-pill px-3">
                             <i class="fa-brands fa-whatsapp me-1"></i> Resolve
-                        </a>
+                        </button>
                     </div>
                 </div>`;
             });
@@ -430,6 +430,48 @@ function renderDirectoryResults(data, message) {
 
 // Initialize Dropdowns
 loadLocations();
+
+async function sendAutoWhatsApp(retailerId, type, message, btnElement) {
+    const originalHtml = btnElement.innerHTML;
+    btnElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Sending...';
+    btnElement.disabled = true;
+    
+    try {
+        const response = await fetch('/api/send-whatsapp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                retailer_id: retailerId,
+                type: type,
+                message: message
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            btnElement.classList.remove('btn-outline-success');
+            btnElement.classList.add('btn-success');
+            btnElement.innerHTML = '<i class="fa-solid fa-check me-1"></i> Sent!';
+            if(data.simulation) {
+                console.log("WhatsApp message simulated in backend terminal.");
+            }
+        } else {
+            throw new Error(data.message || 'Send failed');
+        }
+    } catch(e) {
+        console.error(e);
+        btnElement.classList.remove('btn-outline-success');
+        btnElement.classList.add('btn-danger');
+        btnElement.innerHTML = '<i class="fa-solid fa-xmark me-1"></i> Error';
+        setTimeout(() => {
+            btnElement.classList.remove('btn-danger');
+            btnElement.classList.add('btn-outline-success');
+            btnElement.innerHTML = originalHtml;
+            btnElement.disabled = false;
+        }, 3000);
+    }
+}
 
 </script>
 {% endblock %}

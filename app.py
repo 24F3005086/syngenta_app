@@ -4,6 +4,12 @@ import numpy as np
 from datetime import datetime, timedelta
 import random
 import hashlib
+import os
+
+try:
+    from twilio.rest import Client
+except ImportError:
+    Client = None
 
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
@@ -343,6 +349,39 @@ def nearby_retailers():
         res['color'] = h['color']
         
     return jsonify(results)
+
+@app.route('/api/send-whatsapp', methods=['POST'])
+def send_whatsapp():
+    data = request.json
+    retailer_id = data.get('retailer_id')
+    alert_type = data.get('type')
+    message_text = data.get('message')
+    
+    account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+    auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
+    
+    full_message = f"🚨 SYNGENTA ALERT: URGENT {alert_type} at {retailer_id}. {message_text}. Please take action immediately."
+    
+    if account_sid and auth_token and Client:
+        try:
+            client = Client(account_sid, auth_token)
+            message = client.messages.create(
+                from_='whatsapp:+14155238886',
+                body=full_message,
+                to='whatsapp:+919876543210' # Placeholder destination
+            )
+            return jsonify({'status': 'success', 'sid': message.sid})
+        except Exception as e:
+            print("Twilio Error:", e)
+            return jsonify({'status': 'error', 'message': str(e)}), 500
+    else:
+        # Simulation Mode
+        print("\n" + "="*50)
+        print("📲 SIMULATING WHATSAPP MESSAGE SEND (No API Keys)")
+        print(f"TO: Territory Manager")
+        print(f"MESSAGE: {full_message}")
+        print("="*50 + "\n")
+        return jsonify({'status': 'success', 'simulation': True})
 
 @app.route('/api/dashboard-stats')
 def dashboard_stats():
