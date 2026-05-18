@@ -86,10 +86,10 @@
 
 <div class="row mb-5">
     <div class="col-lg-8 mb-4 mb-lg-0">
-        <div class="card p-4 border-0 h-100">
-            <h3 class="mb-4"><i class="fa-solid fa-triangle-exclamation text-danger me-2"></i> System Alerts</h3>
-            <div id="alertsArea" class="d-flex flex-column gap-3 pe-2" style="max-height: 400px; overflow-y: auto;">
-                <div class="text-secondary text-center py-4">Loading alerts...</div>
+        <div class="card p-4 border-0 h-100" style="background: linear-gradient(145deg, rgba(15,23,42,0.9), rgba(30,41,59,0.8));">
+            <h3 class="mb-4"><i class="fa-solid fa-cloud-bolt text-info me-2"></i> Hyper-Local Weather Intelligence</h3>
+            <div id="weatherArea" class="text-center py-5">
+                <div class="text-secondary"><i class="fa-solid fa-location-dot me-2"></i> Select a location above to load weather insights</div>
             </div>
         </div>
     </div>
@@ -132,40 +132,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('statAlerts').innerText = stats.critical_alerts.toLocaleString();
         document.getElementById('statRevenue').innerText = '₹' + (stats.revenue_opportunity / 1000000).toFixed(1) + 'M';
     } catch(e) {}
-    
-    // Load alerts
-    try {
-        const res = await fetch('/api/alerts');
-        const data = await res.json();
-        let alertsHtml = '';
-        if (data.alerts.length === 0) {
-            alertsHtml = '<div class="text-success text-center py-4"><i class="fa-solid fa-check-circle fa-2x mb-2"></i><br>All systems nominal. No alerts.</div>';
-        } else {
-            data.alerts.forEach(alert => {
-                let badgeClass = alert.severity === 'High' ? 'bg-danger' : 'bg-warning text-dark';
-                let icon = alert.type === 'OOS Streak' ? 'fa-box-open' : (alert.type === 'Sales Drop' ? 'fa-arrow-trend-down' : 'fa-store-slash');
-                
-                let escapedMsg = alert.message.replace(/'/g, "\\'");
-                alertsHtml += `
-                <div class="p-3 rounded" style="background: rgba(255,255,255,0.05); border-left: 4px solid ${alert.severity === 'High' ? 'var(--danger)' : 'var(--warning)'};">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <div class="fw-bold"><i class="fa-solid ${icon} me-2 text-secondary"></i>${alert.type}</div>
-                        <span class="badge ${badgeClass}">${alert.severity}</span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-end mt-2">
-                        <div>
-                            <div class="text-white mb-1"><a href="/retailer/${alert.retailer_id}" class="text-info text-decoration-none fw-bold">${alert.retailer_id}</a></div>
-                            <div class="text-secondary small">${alert.message}</div>
-                        </div>
-                        <button onclick="sendAutoWhatsApp('${alert.retailer_id}', '${alert.type}', '${escapedMsg}', this)" class="btn btn-sm btn-outline-success rounded-pill px-3">
-                            <i class="fa-brands fa-whatsapp me-1"></i> Resolve
-                        </button>
-                    </div>
-                </div>`;
-            });
-        }
-        document.getElementById('alertsArea').innerHTML = alertsHtml;
-    } catch(e) {}
+    // Weather Area initializes blank
     
     // Initialize Map
     try {
@@ -369,6 +336,7 @@ async function filterRetailers() {
         const res = await fetch(`/api/filter-retailers?district=${district}`);
         const data = await res.json();
         renderDirectoryResults(data, `Showing retailers in ${district}`);
+        loadWeather(null, null, district);
     } catch(e) {}
 }
 
@@ -389,6 +357,7 @@ function findNearMe() {
             const res = await fetch(`/api/nearby-retailers?lat=${lat}&lng=${lng}`);
             const data = await res.json();
             renderDirectoryResults(data, `Showing closest retailers to your location`);
+            loadWeather(lat, lng, null);
         } catch(e) {}
     }, () => {
         document.getElementById('directoryLoading').classList.add('d-none');
@@ -430,6 +399,51 @@ function renderDirectoryResults(data, message) {
 
 // Initialize Dropdowns
 loadLocations();
+
+async function loadWeather(lat, lng, district) {
+    const weatherArea = document.getElementById('weatherArea');
+    weatherArea.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-info mb-3"></div><div class="text-secondary">Analyzing live weather data...</div></div>`;
+    
+    try {
+        let url = `/api/weather-insights?`;
+        if (lat && lng) url += `lat=${lat}&lng=${lng}`;
+        else if (district) url += `district=${district}`;
+        
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        if (data.error) throw new Error(data.error);
+        
+        let html = `
+        <div class="row h-100 align-items-center">
+            <div class="col-md-5 text-center border-end border-secondary border-opacity-25">
+                <i class="fa-solid ${data.icon} fa-4x mb-3"></i>
+                <div class="display-4 fw-bold text-white">${data.temperature}°C</div>
+                <div class="fs-5 text-secondary mb-2">${data.condition}</div>
+                <div class="text-info small"><i class="fa-solid fa-droplet me-1"></i> Precip: ${data.precipitation} mm</div>
+            </div>
+            <div class="col-md-7 ps-md-4 mt-4 mt-md-0">
+                <h5 class="text-white mb-3"><i class="fa-solid fa-flask text-success me-2"></i>Recommended Products</h5>
+                <div class="d-flex flex-column gap-3">
+        `;
+        
+        data.recommendations.forEach(p => {
+            html += `
+            <div class="p-3 rounded" style="background: rgba(255,255,255,0.05); border-left: 4px solid var(--success);">
+                <div class="fw-bold text-white mb-1">${p.name}</div>
+                <div class="text-secondary small">${p.reason}</div>
+            </div>
+            `;
+        });
+        
+        html += `</div></div></div>`;
+        weatherArea.innerHTML = html;
+        
+    } catch(e) {
+        weatherArea.innerHTML = `<div class="alert alert-danger text-center">Failed to load weather insights.</div>`;
+    }
+}
+
 
 async function sendAutoWhatsApp(retailerId, type, message, btnElement) {
     const originalHtml = btnElement.innerHTML;

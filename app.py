@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import random
 import hashlib
 import os
+import requests
 
 try:
     from twilio.rest import Client
@@ -382,6 +383,63 @@ def send_whatsapp():
         print(f"MESSAGE: {full_message}")
         print("="*50 + "\n")
         return jsonify({'status': 'success', 'simulation': True})
+
+@app.route('/api/weather-insights')
+def weather_insights():
+    lat = request.args.get('lat')
+    lng = request.args.get('lng')
+    district = request.args.get('district')
+    
+    if not lat or not lng:
+        if district:
+            lat, lng = get_retailer_location("mock", district)
+        else:
+            return jsonify({'error': 'Missing location params'}), 400
+            
+    url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lng}&current=temperature_2m,precipitation,weather_code"
+    
+    try:
+        res = requests.get(url, timeout=5)
+        data = res.json()
+        current = data.get('current', {})
+        
+        temp = current.get('temperature_2m', 25)
+        precip = current.get('precipitation', 0)
+        
+        if precip > 0:
+            condition = "Rainy / High Humidity"
+            icon = "fa-cloud-rain text-info"
+            products = [
+                {"name": "Kavach 75 WP", "reason": "High disease risk (early blight) due to rain."},
+                {"name": "Amistar Top", "reason": "Systemic fungicide for broad-spectrum control."},
+                {"name": "Ridomil Gold", "reason": "Preventative action for wet conditions."}
+            ]
+        elif temp > 35:
+            condition = "Hot & Dry"
+            icon = "fa-sun text-warning"
+            products = [
+                {"name": "Actara 25 WG", "reason": "High sucking pest pressure in hot weather."},
+                {"name": "Pegasus", "reason": "Controls mites which thrive in dry heat."},
+                {"name": "Isabion", "reason": "Biostimulant to reduce heat stress."}
+            ]
+        else:
+            condition = "Optimal / Moderate"
+            icon = "fa-cloud-sun text-success"
+            products = [
+                {"name": "Quantis", "reason": "Maintains optimal yield during standard conditions."},
+                {"name": "Score 250 EC", "reason": "Routine protective fungicidal spray."},
+                {"name": "Karate Zeon", "reason": "Standard broad-spectrum insect control."}
+            ]
+            
+        return jsonify({
+            'temperature': temp,
+            'precipitation': precip,
+            'condition': condition,
+            'icon': icon,
+            'recommendations': products
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/dashboard-stats')
 def dashboard_stats():
