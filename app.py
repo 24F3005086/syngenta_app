@@ -245,41 +245,104 @@ def retailer_detail(retailer_id):
     })
 
 # =========================================================
-# ANOMALY DETECTION, STATS & MAP
+# =========================================================
+# ANOMALY DETECTION, STATS, MAP & DIRECTORY
 # =========================================================
 
-@app.route('/api/map-data')
-def get_map_data():
-    retailers = DATA['retailers'].head(200) # Load top 200 for demo
-    
+def get_retailer_location(retailer_id, district):
     district_coords = {
         'Patna': (25.5941, 85.1376),
         'Jalgaon': (21.0077, 75.5626),
         'Vijayapura': (16.8302, 75.7100),
         'Ahmedabad': (23.0225, 72.5714),
-        'Ludhiana': (30.9010, 75.8573)
+        'Ludhiana': (30.9010, 75.8573),
+        'Hisar': (29.1492, 75.7217),
+        'Varanasi': (25.3176, 82.9739)
     }
+    base_lat, base_lng = district_coords.get(district, (22.5, 78.5))
+    h = int(hashlib.md5(retailer_id.encode()).hexdigest(), 16)
+    lat_offset = (h % 1000) / 10000.0 - 0.05
+    lng_offset = ((h // 1000) % 1000) / 10000.0 - 0.05
+    return (base_lat + lat_offset, base_lng + lng_offset)
+
+@app.route('/api/map-data')
+def get_map_data():
+    retailers = DATA['retailers'].head(200) # Load top 200 for demo
     
     map_data = []
     for _, r in retailers.iterrows():
-        dist = r['district']
-        base_lat, base_lng = district_coords.get(dist, (22.5, 78.5))
-        
-        h = int(hashlib.md5(r['retailer_id'].encode()).hexdigest(), 16)
-        lat_offset = (h % 1000) / 10000.0 - 0.05
-        lng_offset = ((h // 1000) % 1000) / 10000.0 - 0.05
-        
+        lat, lng = get_retailer_location(r['retailer_id'], r['district'])
         health = calculate_health_score(r['retailer_id'])
         
         map_data.append({
             'retailer_id': r['retailer_id'],
-            'lat': base_lat + lat_offset,
-            'lng': base_lng + lng_offset,
+            'lat': lat,
+            'lng': lng,
             'status': health['status'],
             'score': health['score']
         })
         
     return jsonify({'map_data': map_data})
+
+@app.route('/api/locations')
+def get_locations():
+    # Returns nested dictionary { "Country": { "State": ["District1", "District2"] } }
+    df = DATA['retailers']
+    locations = {"India": {}}
+    for state in df['state'].dropna().unique():
+        districts = df[df['state'] == state]['district'].dropna().unique().tolist()
+        locations["India"][state] = districts
+    return jsonify(locations)
+
+@app.route('/api/filter-retailers')
+def filter_retailers():
+    district = request.args.get('district')
+    if not district:
+        return jsonify([])
+        
+    filtered = DATA['retailers'][DATA['retailers']['district'] == district].head(15)
+    results = []
+    for _, r in filtered.iterrows():
+        h = calculate_health_score(r['retailer_id'])
+        results.append({
+            'retailer_id': r['retailer_id'],
+            'district': r['district'],
+            'score': h['score'],
+            'status': h['status'],
+            'color': h['color']
+        })
+    return jsonify(results)
+
+@app.route('/api/nearby-retailers')
+def nearby_retailers():
+    lat = float(request.args.get('lat', 22.5))
+    lng = float(request.args.get('lng', 78.5))
+    
+    retailers = DATA['retailers'].head(300) # search pool
+    results = []
+    
+    for _, r in retailers.iterrows():
+        r_lat, r_lng = get_retailer_location(r['retailer_id'], r['district'])
+        # Simple Euclidean distance for demo ranking
+        dist = ((lat - r_lat)**2 + (lng - r_lng)**2)**0.5
+        results.append({
+            'retailer_id': r['retailer_id'],
+            'district': r['district'],
+            'distance': dist,
+            'lat': r_lat,
+            'lng': r_lng
+        })
+        
+    results = sorted(results, key=lambda x: x['distance'])[:12]
+    
+    # Append health scores for top results
+    for res in results:
+        h = calculate_health_score(res['retailer_id'])
+        res['score'] = h['score']
+        res['status'] = h['status']
+        res['color'] = h['color']
+        
+    return jsonify(results)
 
 @app.route('/api/dashboard-stats')
 def dashboard_stats():

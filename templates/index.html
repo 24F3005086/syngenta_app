@@ -38,6 +38,52 @@
     </div>
 </div>
 
+<!-- ADVANCED RETAILER DIRECTORY -->
+<div class="row mb-5">
+    <div class="col-12">
+        <div class="card p-4 border-0">
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+                <h3 class="mb-0"><i class="fa-solid fa-address-book text-success me-2"></i> Advanced Retailer Directory</h3>
+                <button class="btn btn-outline-info shadow-sm" onclick="findNearMe()" id="geoBtn">
+                    <i class="fa-solid fa-location-crosshairs me-2"></i> Find Near Me
+                </button>
+            </div>
+            
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label class="form-label text-secondary small">Country</label>
+                    <select class="form-select bg-dark text-white border-secondary" id="countrySelect" onchange="loadStates()">
+                        <option value="">Select Country</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-secondary small">State</label>
+                    <select class="form-select bg-dark text-white border-secondary" id="stateSelect" onchange="loadDistricts()" disabled>
+                        <option value="">Select State</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-secondary small">District</label>
+                    <select class="form-select bg-dark text-white border-secondary" id="districtSelect" onchange="filterRetailers()" disabled>
+                        <option value="">Select District</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="directoryLoading" class="text-center py-4 d-none">
+                <div class="spinner-border text-info" role="status"></div>
+                <div class="text-secondary mt-2">Locating retailers...</div>
+            </div>
+
+            <div class="row g-4" id="directoryResults">
+                <div class="col-12 text-center text-secondary py-5">
+                    Select a location or click "Find Near Me" to explore retailers.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row mb-5">
     <div class="col-lg-8 mb-4 mb-lg-0">
         <div class="card p-4 border-0 h-100">
@@ -252,5 +298,138 @@ async function loadRecommendations() {
         btn.disabled = false;
     }
 }
+
+let locationData = {};
+
+async function loadLocations() {
+    try {
+        const res = await fetch('/api/locations');
+        locationData = await res.json();
+        
+        const countrySelect = document.getElementById('countrySelect');
+        Object.keys(locationData).forEach(country => {
+            const opt = document.createElement('option');
+            opt.value = country;
+            opt.innerText = country;
+            countrySelect.appendChild(opt);
+        });
+    } catch(e) {}
+}
+
+function loadStates() {
+    const country = document.getElementById('countrySelect').value;
+    const stateSelect = document.getElementById('stateSelect');
+    const districtSelect = document.getElementById('districtSelect');
+    
+    stateSelect.innerHTML = '<option value="">Select State</option>';
+    districtSelect.innerHTML = '<option value="">Select District</option>';
+    districtSelect.disabled = true;
+    
+    if (country && locationData[country]) {
+        stateSelect.disabled = false;
+        Object.keys(locationData[country]).forEach(state => {
+            const opt = document.createElement('option');
+            opt.value = state;
+            opt.innerText = state;
+            stateSelect.appendChild(opt);
+        });
+    } else {
+        stateSelect.disabled = true;
+    }
+}
+
+function loadDistricts() {
+    const country = document.getElementById('countrySelect').value;
+    const state = document.getElementById('stateSelect').value;
+    const districtSelect = document.getElementById('districtSelect');
+    
+    districtSelect.innerHTML = '<option value="">Select District</option>';
+    
+    if (country && state && locationData[country][state]) {
+        districtSelect.disabled = false;
+        locationData[country][state].forEach(district => {
+            const opt = document.createElement('option');
+            opt.value = district;
+            opt.innerText = district;
+            districtSelect.appendChild(opt);
+        });
+    } else {
+        districtSelect.disabled = true;
+    }
+}
+
+async function filterRetailers() {
+    const district = document.getElementById('districtSelect').value;
+    if (!district) return;
+    
+    document.getElementById('directoryResults').innerHTML = '';
+    document.getElementById('directoryLoading').classList.remove('d-none');
+    
+    try {
+        const res = await fetch(`/api/filter-retailers?district=${district}`);
+        const data = await res.json();
+        renderDirectoryResults(data, `Showing retailers in ${district}`);
+    } catch(e) {}
+}
+
+function findNearMe() {
+    if (!navigator.geolocation) {
+        alert('Geolocation is not supported by your browser');
+        return;
+    }
+    
+    document.getElementById('directoryResults').innerHTML = '';
+    document.getElementById('directoryLoading').classList.remove('d-none');
+    
+    navigator.geolocation.getCurrentPosition(async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        
+        try {
+            const res = await fetch(`/api/nearby-retailers?lat=${lat}&lng=${lng}`);
+            const data = await res.json();
+            renderDirectoryResults(data, `Showing closest retailers to your location`);
+        } catch(e) {}
+    }, () => {
+        document.getElementById('directoryLoading').classList.add('d-none');
+        alert('Unable to retrieve your location. Please allow location permissions.');
+    });
+}
+
+function renderDirectoryResults(data, message) {
+    document.getElementById('directoryLoading').classList.add('d-none');
+    const container = document.getElementById('directoryResults');
+    
+    if (data.length === 0) {
+        container.innerHTML = `<div class="col-12 text-center py-4 text-warning">No retailers found.</div>`;
+        return;
+    }
+    
+    let html = `<div class="col-12 text-success fw-bold mb-2"><i class="fa-solid fa-check me-2"></i>${message}</div>`;
+    
+    data.forEach(r => {
+        let distHtml = r.distance !== undefined ? `(${r.distance.toFixed(1)} km away)` : '';
+        html += `
+        <div class="col-md-4 mb-3">
+            <div class="card p-3 border-secondary border-opacity-25 h-100" style="background: rgba(255,255,255,0.05);">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h5 class="mb-0 text-white">${r.retailer_id}</h5>
+                    <span class="badge bg-${r.color} bg-opacity-25 text-${r.color} border border-${r.color}">${r.score}</span>
+                </div>
+                <div class="text-secondary small mb-3"><i class="fa-solid fa-map-pin me-1"></i> ${r.district} ${distHtml}</div>
+                <div class="mt-auto">
+                    <a href="/retailer/${r.retailer_id}" class="btn btn-sm btn-outline-info w-100">View Profile</a>
+                </div>
+            </div>
+        </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// Initialize Dropdowns
+loadLocations();
+
 </script>
 {% endblock %}
