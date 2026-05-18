@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}Syngenta Field Force Intelligence - Home{% endblock %}
+
+{% block content %}
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">📋 Rep Information</h5>
+            </div>
+            <div class="card-body">
+                {% if error %}
+                <div class="alert alert-danger">{{ error }}</div>
+                {% else %}
+                
+                <div class="mb-3">
+                    <label for="repId" class="form-label">🔍 Select Rep ID</label>
+                    <select class="form-select" id="repId">
+                        <option value="">-- Select a rep --</option>
+                        {% for rep in rep_list %}
+                        <option value="{{ rep }}">{{ rep }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="date" class="form-label">📅 Select Date</label>
+                    <input type="date" class="form-control" id="date" value="2026-04-30" 
+                           min="2025-10-01" max="2026-04-30">
+                </div>
+
+                <div class="mb-3">
+                    <label for="numRetailers" class="form-label">📊 Number of Retailers</label>
+                    <input type="range" class="form-range" id="numRetailers" min="5" max="20" value="10">
+                    <small class="text-muted">Show: <span id="numRetailersValue">10</span> retailers</small>
+                </div>
+
+                <button class="btn btn-primary w-100" id="generateBtn">
+                    🚀 Generate Recommendations
+                </button>
+
+                {% endif %}
+            </div>
+        </div>
+
+        {% if not error %}
+        <div class="card shadow mt-3">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">💡 How It Works</h5>
+            </div>
+            <div class="card-body">
+                <small>
+                    <strong>4 Signals:</strong><br>
+                    ✓ Inventory Status (40 pts)<br>
+                    ✓ Visit Recency (25 pts)<br>
+                    ✓ Sales Velocity (20 pts)<br>
+                    ✓ Promotion Activity (15 pts)<br>
+                    <br>
+                    <strong>Total Score: 0-100</strong><br>
+                    Higher = More urgent to visit
+                </small>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Results Section -->
+    <div class="col-md-8">
+        <div id="results" style="display:none;">
+            <div id="loadingSpinner" class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
+
+        {% if not error %}
+        <div id="noResults" class="alert alert-info">
+            <strong>👈 Select a rep and date to generate recommendations</strong>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('numRetailers').addEventListener('input', function() {
+    document.getElementById('numRetailersValue').textContent = this.value;
+});
+
+document.getElementById('generateBtn').addEventListener('click', function() {
+    const repId = document.getElementById('repId').value;
+    const date = document.getElementById('date').value;
+    const numRetailers = document.getElementById('numRetailers').value;
+
+    if (!repId) {
+        alert('Please select a Rep ID');
+        return;
+    }
+
+    // Show loading
+    document.getElementById('noResults').style.display = 'none';
+    document.getElementById('results').style.display = 'block';
+    document.getElementById('loadingSpinner').innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>';
+
+    // Fetch recommendations
+    fetch('/api/get-recommendations', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            rep_id: repId,
+            date: date,
+            num_retailers: parseInt(numRetailers)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            document.getElementById('loadingSpinner').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+        } else {
+            displayRecommendations(data);
+        }
+    })
+    .catch(error => {
+        document.getElementById('loadingSpinner').innerHTML = `<div class="alert alert-danger">Error: ${error}</div>`;
+    });
+});
+
+function displayRecommendations(data) {
+    let html = '';
+
+    // Header info
+    html += `
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="text-muted">Rep ID</h6>
+                        <h5>${data.rep_id}</h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="text-muted">Territory</h6>
+                        <h5>${data.rep_name}</h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="text-muted">State</h6>
+                        <h5>${data.state}</h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="text-muted">Date</h6>
+                        <h5>${data.date}</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h4 class="mb-3">🎯 Top ${data.num_retailers} Retailers to Visit</h4>
+    `;
+
+    // Retailer cards
+    data.top_retailers.forEach((retailer, idx) => {
+        const action = data.actions[retailer.retailer_id];
+        const score = retailer.score;
+        
+        let urgencyBadge = '';
+        if (score >= 70) {
+            urgencyBadge = '<span class="badge bg-danger">CRITICAL</span>';
+        } else if (score >= 40) {
+            urgencyBadge = '<span class="badge bg-warning text-dark">HIGH</span>';
+        } else {
+            urgencyBadge = '<span class="badge bg-success">LOW</span>';
+        }
+
+        html += `
+            <div class="card mb-3 retailer-card">
+                <div class="card-header bg-light">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h5 class="mb-0">${idx + 1}. ${retailer.retailer_id} ${urgencyBadge}</h5>
+                        </div>
+                        <div class="col-auto">
+                            <strong>Score: ${score.toFixed(0)}/100</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Score bar -->
+                    <div class="progress mb-3" style="height: 25px;">
+                        <div class="progress-bar" role="progressbar" style="width: ${score}%" aria-valuenow="${score}" aria-valuemin="0" aria-valuemax="100">
+                            ${score.toFixed(0)}%
+                        </div>
+                    </div>
+
+                    <!-- Breakdown -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <small>
+                                <strong>📦 Inventory</strong><br>
+                                ${retailer.breakdown.inventory.points} pts<br>
+                                <span class="text-muted">${retailer.breakdown.inventory.reason}</span>
+                            </small>
+                        </div>
+                        <div class="col-md-3">
+                            <small>
+                                <strong>📅 Recency</strong><br>
+                                ${retailer.breakdown.visit_recency.points} pts<br>
+                                <span class="text-muted">${retailer.breakdown.visit_recency.reason}</span>
+                            </small>
+                        </div>
+                        <div class="col-md-3">
+                            <small>
+                                <strong>📊 Velocity</strong><br>
+                                ${retailer.breakdown.sales_velocity.points} pts<br>
+                                <span class="text-muted">${retailer.breakdown.sales_velocity.reason}</span>
+                            </small>
+                        </div>
+                        <div class="col-md-3">
+                            <small>
+                                <strong>🎯 Promo</strong><br>
+                                ${retailer.breakdown.promotion.points} pts<br>
+                                <span class="text-muted">${retailer.breakdown.promotion.reason}</span>
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Action -->
+                    <div class="alert alert-${action.color}" role="alert">
+                        <strong>${action.action}</strong><br>
+                        ${action.product ? `Product: <strong>${action.product}</strong><br>` : ''}
+                        Reason: ${action.reason}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    // Download buttons
+    html += `
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <a href="/api/export/${data.rep_id}/${data.date}" class="btn btn-success w-100" download>
+                    📥 Download as JSON
+                </a>
+            </div>
+            <div class="col-md-6">
+                <button class="btn btn-info w-100" onclick="alert('CSV export available in production')">
+                    📊 Download as CSV
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('loadingSpinner').innerHTML = html;
+}
+</script>
+{% endblock %}
