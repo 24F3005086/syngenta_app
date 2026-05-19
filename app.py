@@ -27,6 +27,12 @@ def load_data():
     data['visits'] = pd.read_csv('./data/retailer_visit_log.csv')
     data['pos'] = pd.read_csv('./data/retailer_pos.csv')
     data['reps'] = pd.read_csv('./data/reps_territory.csv')
+    
+    # Load newly integrated datasets for AI patterns
+    data['products'] = pd.read_csv('./templates/my_data - my_data.csv')
+    data['growers'] = pd.read_csv('./data/growers.csv')
+    data['whatsapp'] = pd.read_csv('./data/whatsapp_campaign.csv')
+    data['digital'] = pd.read_csv('./data/digital_funnel_weekly.csv')
 
     data['inventory']['week_end_date'] = pd.to_datetime(data['inventory']['week_end_date'])
     data['visits']['visit_date'] = pd.to_datetime(data['visits']['visit_date'])
@@ -130,83 +136,345 @@ def calculate_health_score(retailer_id):
 # =========================================================
 
 def get_priority(retailer_id):
-    inventory = DATA['inventory']
-    pos = DATA['pos']
-
-    retailer_inv = inventory[inventory['retailer_id'] == retailer_id]
-    retailer_sales = pos[pos['retailer_id'] == retailer_id]
-
-    latest_inv = retailer_inv.tail(1)
-
     score = 0
     reason = []
-
-    if not latest_inv.empty:
-        qty = latest_inv.iloc[0]['sku_qty']
-
-        if qty == 0:
-            score += 40
-            reason.append('Out of stock')
-
-        elif qty < 5:
+    
+    retailer_row = DATA['retailers'][DATA['retailers']['retailer_id'] == retailer_id]
+    if retailer_row.empty:
+        return 0, []
+        
+    district = retailer_row.iloc[0]['district']
+    
+    # 1. Supply Chain & Inventory Risk
+    inventory = DATA['inventory']
+    retailer_inv = inventory[inventory['retailer_id'] == retailer_id]
+    if not retailer_inv.empty:
+        latest_week = retailer_inv['week_end_date'].max()
+        latest_inv_all_skus = retailer_inv[retailer_inv['week_end_date'] == latest_week]
+        
+        oos_skus = latest_inv_all_skus[latest_inv_all_skus['sku_qty'] == 0]['sku_name'].tolist()
+        low_skus = latest_inv_all_skus[(latest_inv_all_skus['sku_qty'] > 0) & (latest_inv_all_skus['sku_qty'] < 5)]['sku_name'].tolist()
+        
+        if oos_skus:
+            score += 30 + (10 * len(oos_skus))
+            reason.append(f"Critical Stockout: {', '.join(oos_skus[:2])}")
+        elif low_skus:
+            score += 20 + (5 * len(low_skus))
+            reason.append(f"Low Inventory: {', '.join(low_skus[:2])}")
+            
+    # 2. POS Velocity
+    pos = DATA['pos']
+    retailer_sales = pos[pos['retailer_id'] == retailer_id]
+    if not retailer_sales.empty:
+        latest_sales = retailer_sales[retailer_sales['transaction_date'] >= retailer_sales['transaction_date'].max() - timedelta(days=14)]
+        if latest_sales['sku_qty'].sum() > 150:
+            score += 25
+            reason.append("High sales velocity (Last 14 days)")
+            
+    # 3. Spatio-Temporal & Crop Lifecycle Demand
+    import json
+    growers = DATA['growers']
+    district_growers = growers[growers['district'] == district]
+    if not district_growers.empty:
+        crop_counts = {}
+        for _, row in district_growers.iterrows():
+            try:
+                if pd.notna(row['grower_crop_calendar']):
+                    gc = json.loads(row['grower_crop_calendar'])
+                    crop = gc.get('crop')
+                    if crop:
+                        crop_counts[crop] = crop_counts.get(crop, 0) + 1
+            except: pass
+        
+        if crop_counts:
+            top_crop = max(crop_counts, key=crop_counts.get)
+            if crop_counts[top_crop] > 2:
+                score += 15
+                reason.append(f"High predicted demand for {top_crop.capitalize()} (Crop Lifecycle)")
+                
+    # 4. Marketing Conversion & Digital Engagement
+    whatsapp = DATA['whatsapp']
+    if not district_growers.empty:
+        district_grower_ids = district_growers['grower_id'].tolist()
+        district_campaigns = whatsapp[(whatsapp['grower_id'].isin(district_grower_ids)) & (whatsapp['clicked_status'] == True)]
+        if not district_campaigns.empty:
             score += 20
-            reason.append('Low inventory')
+            reason.append(f"High local digital engagement ({len(district_campaigns)} recent WhatsApp clicks)")
 
-    sales = retailer_sales['sku_qty'].sum()
-
-    if sales > 100:
-        score += 30
-        reason.append('High sales velocity')
-
-    return score, reason
+    return min(100, score), reason
 
 # =========================================================
-# CHATBOT
+# CHATBOT (Bilingual AI Copilot - Hindi + English)
 # =========================================================
 
 import re
+import json as json_lib
+
+def detect_intent(query):
+    """Detect user intent from Hindi or English query."""
+    # Greeting
+    if any(w in query for w in ['hello', 'hi', 'hey', 'namaste', 'namaskar', 'namsate', 'hlo']):
+        return 'greeting'
+    # Retailer lookup
+    if re.search(r'rtl_\d+', query):
+        return 'retailer_lookup'
+    # District/location queries
+    if any(w in query for w in ['district', 'zila', 'jila', 'location', 'area', 'region', 'jagah', 'ilaka', 'state']):
+        return 'district_query'
+    # Crop queries
+    if any(w in query for w in ['crop', 'fasal', 'kheti', 'wheat', 'gehun', 'rice', 'chawal', 'dhan', 'cotton', 'kapas', 'soybean', 'maize', 'makka', 'lentil', 'masoor', 'mustard', 'sarson', 'chana', 'onion', 'pyaz', 'potato', 'aloo', 'tomato', 'tamatar']):
+        return 'crop_query'
+    # Product queries
+    if any(w in query for w in ['product', 'dawai', 'dawa', 'spray', 'fungicide', 'herbicide', 'insecticide', 'pesticide', 'tilt', 'score', 'axial', 'topik', 'actara', 'amistar', 'kavach', 'cruiser', 'vibrance', 'movondo', 'vertimec', 'keetnashak', 'khatpatwar']):
+        return 'product_query'
+    # Marketing queries
+    if any(w in query for w in ['marketing', 'campaign', 'whatsapp', 'message', 'sandesh', 'promotion', 'funnel', 'click', 'open rate']):
+        return 'marketing_query'
+    # Inventory/stock queries
+    if any(w in query for w in ['inventory', 'stock', 'maal', 'stockout', 'out of stock', 'khatam', 'low stock', 'kam stock', 'supply']):
+        return 'inventory_query'
+    # Sales queries
+    if any(w in query for w in ['sales', 'bikri', 'revenue', 'kamai', 'transaction', 'pos', 'sell', 'bech']):
+        return 'sales_query'
+    # Priority/recommendation queries
+    if any(w in query for w in ['priority', 'recommend', 'top', 'best', 'important', 'zaroori', 'jaruri', 'pehle', 'urgent', 'critical', 'suggest', 'sujhav']):
+        return 'priority_query'
+    # Weather queries
+    if any(w in query for w in ['weather', 'mausam', 'rain', 'barish', 'baarish', 'temp', 'temperature', 'garmi', 'thand', 'humidity', 'nami']):
+        return 'weather_query'
+    # Help
+    if any(w in query for w in ['help', 'madad', 'kya kar sakte', 'what can you', 'features', 'kaise']):
+        return 'help'
+    # Stats
+    if any(w in query for w in ['stats', 'summary', 'overview', 'dashboard', 'total', 'kitne', 'count']):
+        return 'stats_query'
+    return 'unknown'
 
 @app.route('/api/chatbot', methods=['POST'])
 def chatbot():
     data = request.json
-    query = data.get('message', '').lower()
+    query = data.get('message', '').lower().strip()
+    intent = detect_intent(query)
 
-    # Advanced AI Simulation
-    match = re.search(r'(rtl_\d+)', query)
-    retailer_id = match.group(1).upper() if match else None
+    if intent == 'greeting':
+        response = "🙏 Namaste! Main Syngenta AI Copilot hoon. Aap mujhse Hindi ya English mein kuch bhi pooch sakte hain!<br><br>I can help you with:<br>• 🏪 Retailer health & priority<br>• 🌾 Crop lifecycle & product recommendations<br>• 📊 Sales & inventory insights<br>• 📱 WhatsApp campaign analytics<br>• 🌦️ Weather-based advice"
 
-    if retailer_id:
+    elif intent == 'retailer_lookup':
+        match = re.search(r'(rtl_\d+)', query)
+        retailer_id = match.group(1).upper()
         health = calculate_health_score(retailer_id)
         retailer_info = DATA['retailers'][DATA['retailers']['retailer_id'] == retailer_id]
-        
+
         if not retailer_info.empty:
-            territory = retailer_info.iloc[0]['territory_id']
-            district = retailer_info.iloc[0]['district']
+            row = retailer_info.iloc[0]
+            district = row['district']
+            state = row['state']
+            score, reasons = get_priority(retailer_id)
             
-            if 'health' in query or 'score' in query:
-                response = f"**{retailer_id}** is currently in **{health['status']}** status with a health score of **{health['score']}/100**. This score is based on recent POS data, inventory levels, and field visits in {district}."
-            elif 'detail' in query or 'info' in query or 'who' in query or 'where' in query:
-                response = f"**{retailer_id}** is located in district **{district}** (Territory: {territory}). Current health score is **{health['score']}**."
-            else:
-                response = f"For **{retailer_id}** (located in {district}), the health score is **{health['score']}** ({health['status']}). What specific metrics would you like to know (sales, inventory, or visits)?"
+            # Get inventory status
+            inv = DATA['inventory'][DATA['inventory']['retailer_id'] == retailer_id]
+            oos_count = 0
+            if not inv.empty:
+                latest = inv[inv['week_end_date'] == inv['week_end_date'].max()]
+                oos_count = len(latest[latest['sku_qty'] == 0])
+
+            response = f"📋 <b>{retailer_id}</b> — {district}, {state}<br><br>"
+            response += f"🏥 Health: <b>{health['status']}</b> ({health['score']}/100)<br>"
+            response += f"⚠️ Churn Risk: <b>{health['churn_risk']}%</b><br>"
+            response += f"🎯 Priority Score: <b>{score}</b><br>"
+            if oos_count > 0:
+                response += f"🔴 Out-of-Stock SKUs: <b>{oos_count}</b><br>"
+            if reasons:
+                response += f"<br>💡 AI Insights:<br>{'<br>'.join(['• ' + r for r in reasons])}"
         else:
-            response = f"I found the ID {retailer_id} but couldn't locate it in the retailers database."
+            response = f"❌ Retailer <b>{retailer_id}</b> database mein nahi mila. Please check the ID."
+
+    elif intent == 'district_query':
+        # Extract district name
+        districts = DATA['retailers']['district'].unique()
+        found_district = None
+        for d in districts:
+            if d.lower() in query:
+                found_district = d
+                break
+        
+        if found_district:
+            count = len(DATA['retailers'][DATA['retailers']['district'] == found_district])
+            growers = DATA['growers']
+            dg = growers[growers['district'] == found_district]
+            response = f"📍 <b>{found_district}</b> District Intelligence:<br><br>"
+            response += f"🏪 Retailers: <b>{count}</b><br>"
+            response += f"👨‍🌾 Growers: <b>{len(dg)}</b><br>"
             
-    elif 'recommend' in query or 'priority' in query or 'top' in query:
-        retailers = DATA['retailers']['retailer_id'].unique()[:5]
-        response = "Based on my analysis of low inventory and high sales velocity, here are the top priority retailers to focus on:<br><br>"
+            # Top crops
+            crop_counts = {}
+            for _, row in dg.head(100).iterrows():
+                try:
+                    if pd.notna(row.get('grower_crop_calendar')):
+                        gc = json_lib.loads(row['grower_crop_calendar'])
+                        crop = gc.get('crop')
+                        if crop: crop_counts[crop] = crop_counts.get(crop, 0) + 1
+                except: pass
+            if crop_counts:
+                top = sorted(crop_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+                response += f"<br>🌾 Top Crops:<br>{'<br>'.join(['• ' + c.capitalize() + f' ({n} growers)' for c, n in top])}"
+        else:
+            response = "Aap kaunse district ke baare mein jaanna chahte hain? Mujhe district ka naam batayein (e.g., 'Patna district' ya 'Jaipur ke baare mein batao')."
+
+    elif intent == 'crop_query':
+        crop_keywords = {'wheat': 'Wheat', 'gehun': 'Wheat', 'rice': 'Rice', 'chawal': 'Rice', 'dhan': 'Rice', 'cotton': 'Cotton', 'kapas': 'Cotton', 'soybean': 'Soybean', 'maize': 'Corn', 'makka': 'Corn', 'potato': 'Potato', 'aloo': 'Potato', 'onion': 'Onion', 'pyaz': 'Onion', 'tomato': 'Tomato', 'tamatar': 'Tomato', 'chilli': 'Chilli'}
+        found_crop = None
+        for k, v in crop_keywords.items():
+            if k in query:
+                found_crop = v
+                break
+
+        if found_crop:
+            products_df = DATA['products']
+            matching = []
+            for _, prod in products_df.iterrows():
+                val = prod.get(found_crop, '')
+                if pd.notna(val) and str(val).strip():
+                    matching.append({'name': prod['sku_name'], 'class': prod.get('Class', ''), 'disease': str(val)})
+
+            response = f"🌾 <b>{found_crop}</b> ke liye Syngenta products:<br><br>"
+            if matching:
+                for m in matching[:5]:
+                    response += f"💊 <b>{m['name']}</b> ({m['class']})<br>&nbsp;&nbsp;&nbsp;↳ {m['disease']}<br>"
+            else:
+                response += "Is fasal ke liye abhi koi specific product registered nahi hai."
+        else:
+            response = "Main in crops ke baare mein bata sakta hoon: Wheat/Gehun, Rice/Chawal, Cotton/Kapas, Soybean, Maize/Makka, Potato/Aloo, Onion/Pyaz, Tomato/Tamatar. Kaunsi fasal ke baare mein jaanna hai?"
+
+    elif intent == 'product_query':
+        products_df = DATA['products']
+        found_product = None
+        for _, prod in products_df.iterrows():
+            if str(prod['sku_name']).lower() in query or str(prod['sku_id']).lower() in query:
+                found_product = prod
+                break
+        # Keyword search
+        if found_product is None:
+            for _, prod in products_df.iterrows():
+                name_words = str(prod['sku_name']).lower().split()
+                if any(w in query for w in name_words if len(w) > 3):
+                    found_product = prod
+                    break
+
+        if found_product is not None:
+            desc = str(found_product.get('Description', ''))[:200]
+            pclass = found_product.get('Class', 'N/A')
+            response = f"💊 <b>{found_product['sku_name']}</b><br>"
+            response += f"📦 Type: <b>{pclass}</b><br>"
+            response += f"📝 {desc}<br><br>"
+            # Show which crops it works for
+            crop_cols = ['Wheat','Soybean','Rice','Cotton','Tea','Chilli','Onion','Apple','Corn','Potato','Tomato','Grapes','Mangoes']
+            applicable = []
+            for c in crop_cols:
+                val = found_product.get(c, '')
+                if pd.notna(val) and str(val).strip():
+                    applicable.append(f"• <b>{c}</b>: {str(val)[:80]}")
+            if applicable:
+                response += "🌾 Applicable Crops:<br>" + "<br>".join(applicable[:6])
+        else:
+            response = "Kaun sa product? Main ye sab bata sakta hoon: Tilt 250 EC, Score 250 EC, Axial 50 EC, Topik 15 WP, Actara 25 WG, Amistar 250 SC, Kavach 75 WP, Cruiser 350 FS, Vibrance Integral, Movondo, Vertimec 1.8 EC"
+
+    elif intent == 'marketing_query':
+        wa = DATA['whatsapp']
+        total = len(wa)
+        delivered = len(wa[wa['delivered_status'] == True])
+        opened = len(wa[wa['opened_status'] == True])
+        clicked = len(wa[wa['clicked_status'] == True])
+        top_products = wa['campaign_product'].value_counts().head(3)
+
+        response = f"📱 <b>WhatsApp Campaign Overview:</b><br><br>"
+        response += f"📤 Total Sent: <b>{total:,}</b><br>"
+        response += f"✅ Delivered: <b>{delivered:,}</b> ({round(delivered/total*100,1)}%)<br>"
+        response += f"👀 Opened: <b>{opened:,}</b> ({round(opened/total*100,1)}%)<br>"
+        response += f"🖱️ Clicked: <b>{clicked:,}</b> ({round(clicked/total*100,1)}%)<br><br>"
+        response += "🏆 Top Promoted Products:<br>"
+        for p, c in top_products.items():
+            response += f"• {p}: {c:,} messages<br>"
+
+    elif intent == 'inventory_query':
+        inv = DATA['inventory']
+        latest_week = inv['week_end_date'].max()
+        latest = inv[inv['week_end_date'] == latest_week]
+        oos = latest[latest['sku_qty'] == 0]
+        low = latest[(latest['sku_qty'] > 0) & (latest['sku_qty'] < 5)]
+
+        oos_products = oos['sku_name'].value_counts().head(5)
+        response = f"📦 <b>Inventory Status</b> (Week: {latest_week.strftime('%d %b %Y')}):<br><br>"
+        response += f"🔴 Out-of-Stock instances: <b>{len(oos):,}</b><br>"
+        response += f"🟡 Low Stock instances: <b>{len(low):,}</b><br><br>"
+        response += "Most Stocked-Out Products:<br>"
+        for p, c in oos_products.items():
+            response += f"• {p}: {c} retailers<br>"
+
+    elif intent == 'sales_query':
+        pos = DATA['pos']
+        total_transactions = len(pos)
+        total_revenue = (pos['sku_qty'] * pos['sku_price']).sum()
+        top_products = pos.groupby('sku_name')['sku_qty'].sum().sort_values(ascending=False).head(5)
+
+        response = f"💰 <b>Sales Overview:</b><br><br>"
+        response += f"📊 Total Transactions: <b>{total_transactions:,}</b><br>"
+        response += f"💵 Total Revenue: <b>₹{total_revenue/10000000:.1f} Cr</b><br><br>"
+        response += "🏆 Top Selling Products (by qty):<br>"
+        for p, q in top_products.items():
+            response += f"• {p}: {int(q):,} units<br>"
+
+    elif intent == 'priority_query':
+        retailers = DATA['retailers']['retailer_id'].unique()[:20]
+        results = []
         for r in retailers:
-            score, _ = get_priority(r)
-            if score > 0:
-                response += f"• **{r}** (Priority Score: {score})<br>"
-    elif 'sales' in query:
-        response = "I track POS transaction data across all territories. To get sales insights, please ask about a specific retailer ID (e.g., 'What are the sales for RTL_00001?')."
-    elif 'inventory' in query or 'stock' in query:
-        response = "I monitor weekly inventory records. If you provide a retailer ID, I can check if they are running low or out of stock on key SKUs."
-    elif 'hello' in query or 'hi' in query:
-        response = "Hello! I am the Syngenta AI Copilot. I can analyze retailer health, prioritize restocking, and provide detailed insights. You can ask me things like:<br>• *'What is the health of RTL_00001?'*<br>• *'Which retailers are high priority?'*"
+            s, reasons = get_priority(r)
+            if s > 0:
+                results.append((r, s, reasons))
+        results.sort(key=lambda x: x[1], reverse=True)
+
+        response = "🎯 <b>Top Priority Retailers:</b><br><br>"
+        for r, s, reasons in results[:5]:
+            response += f"• <b>{r}</b> (Score: {s}) — {', '.join(reasons[:2])}<br>"
+        response += "<br>💡 Select a district from the dropdown above for district-specific priorities."
+
+    elif intent == 'weather_query':
+        response = "🌦️ Weather intelligence ke liye, upar ke dropdown se ek district select karein. Main us district ka real-time mausam aur uske hisaab se product recommendations dikha dunga.<br><br>For example: Select India → Bihar → Patna to see live weather + product advice for that region."
+
+    elif intent == 'stats_query':
+        total_r = len(DATA['retailers'])
+        total_g = len(DATA['growers'])
+        total_pos = len(DATA['pos'])
+        total_inv = len(DATA['inventory'])
+        states = DATA['retailers']['state'].nunique()
+
+        response = f"📊 <b>Platform Overview:</b><br><br>"
+        response += f"🏪 Total Retailers: <b>{total_r:,}</b><br>"
+        response += f"👨‍🌾 Total Growers: <b>{total_g:,}</b><br>"
+        response += f"🗺️ States Covered: <b>{states}</b><br>"
+        response += f"🧾 POS Transactions: <b>{total_pos:,}</b><br>"
+        response += f"📦 Inventory Records: <b>{total_inv:,}</b>"
+
+    elif intent == 'help':
+        response = "🤖 <b>Main aapki kaise madad kar sakta hoon:</b><br><br>"
+        response += "🏪 <b>Retailer:</b> 'RTL_00001 ka health batao'<br>"
+        response += "📍 <b>District:</b> 'Patna district ke baare mein batao'<br>"
+        response += "🌾 <b>Crop:</b> 'Wheat/Gehun ke liye kya spray karein?'<br>"
+        response += "💊 <b>Product:</b> 'Tilt 250 EC ke baare mein batao'<br>"
+        response += "📱 <b>Marketing:</b> 'WhatsApp campaign ka status kya hai?'<br>"
+        response += "📦 <b>Inventory:</b> 'Stock status batao'<br>"
+        response += "💰 <b>Sales:</b> 'Total bikri kitni hai?'<br>"
+        response += "📊 <b>Stats:</b> 'Dashboard ka overview do'<br>"
+        response += "🎯 <b>Priority:</b> 'Top priority retailers kaun hain?'"
+
     else:
-        response = "I can analyze retail intelligence data for you. Try asking about a specific retailer (e.g., 'Tell me about RTL_00001') or ask for recommendations."
+        response = "🤔 Main samajh nahi paaya. Aap ye pooch sakte hain:<br><br>"
+        response += "• 'RTL_00001 health' — Retailer analysis<br>"
+        response += "• 'Wheat ke liye product' — Crop-based recommendations<br>"
+        response += "• 'Patna district' — District intelligence<br>"
+        response += "• 'WhatsApp campaign' — Marketing data<br>"
+        response += "• 'Stock status' — Inventory alerts<br>"
+        response += "• 'Madad' / 'Help' — Full list of commands"
 
     return jsonify({
         'response': response
@@ -549,26 +817,362 @@ def seasonal_forecast():
 
 @app.route('/api/get-recommendations', methods=['POST'])
 def get_recommendations():
+    district = request.json.get('district') if request.json else None
 
-    retailers = DATA['retailers']['retailer_id'].unique()[:10]
+    if district:
+        filtered = DATA['retailers'][DATA['retailers']['district'] == district]
+    else:
+        filtered = DATA['retailers'].head(50)
+
+    retailers = filtered['retailer_id'].unique()[:30]
 
     output = []
 
     for retailer in retailers:
         score, reason = get_priority(retailer)
-        health = calculate_health_score(retailer)
+        if score > 0:
+            output.append({
+                'retailer_id': retailer,
+                'priority_score': score,
+                'reason': reason
+            })
 
-        output.append({
-            'retailer_id': retailer,
-            'priority_score': score,
-            'reason': reason,
-            'health': health
-        })
-
-    output = sorted(output, key=lambda x: x['priority_score'], reverse=True)
+    output = sorted(output, key=lambda x: x['priority_score'], reverse=True)[:6]
+    
+    # Calculate health only for the top ones to save computation
+    for item in output:
+        item['health'] = calculate_health_score(item['retailer_id'])
 
     return jsonify({
         'top_retailers': output
+    })
+
+# =========================================================
+# DISTRICT INTELLIGENCE API (Unified)
+# =========================================================
+
+@app.route('/api/district-intelligence')
+def district_intelligence():
+    import json as json_lib
+    district = request.args.get('district')
+    if not district:
+        return jsonify({'error': 'Missing district'}), 400
+
+    result = {}
+
+    # 1. Crop Lifecycle Analysis
+    growers = DATA['growers']
+    district_growers = growers[growers['district'] == district]
+    crop_data = {}
+    stages_info = []
+    if not district_growers.empty:
+        for _, row in district_growers.head(200).iterrows():
+            try:
+                if pd.notna(row.get('grower_crop_calendar')):
+                    gc = json_lib.loads(row['grower_crop_calendar'])
+                    crop = gc.get('crop', 'unknown')
+                    crop_data[crop] = crop_data.get(crop, 0) + 1
+                    if len(stages_info) == 0 and gc.get('stages'):
+                        stages_info = gc['stages']
+            except:
+                pass
+
+    top_crops = sorted(crop_data.items(), key=lambda x: x[1], reverse=True)[:3]
+    result['crop_lifecycle'] = {
+        'total_growers': len(district_growers),
+        'top_crops': [{'crop': c, 'grower_count': n} for c, n in top_crops],
+        'growth_stages': stages_info
+    }
+
+    # 2. Digital Marketing Insights
+    whatsapp = DATA['whatsapp']
+    if not district_growers.empty:
+        grower_ids = district_growers['grower_id'].tolist()
+        campaigns = whatsapp[whatsapp['grower_id'].isin(grower_ids)]
+        total_sent = len(campaigns)
+        total_delivered = len(campaigns[campaigns['delivered_status'] == True]) if total_sent else 0
+        total_opened = len(campaigns[campaigns['opened_status'] == True]) if total_sent else 0
+        total_clicked = len(campaigns[campaigns['clicked_status'] == True]) if total_sent else 0
+
+        # Top campaigned products
+        product_counts = campaigns['campaign_product'].value_counts().head(3)
+        top_products = [{'product': p, 'count': int(c)} for p, c in product_counts.items()]
+    else:
+        total_sent = total_delivered = total_opened = total_clicked = 0
+        top_products = []
+
+    result['marketing'] = {
+        'whatsapp_sent': total_sent,
+        'whatsapp_delivered': total_delivered,
+        'whatsapp_opened': total_opened,
+        'whatsapp_clicked': total_clicked,
+        'open_rate': round((total_opened / total_sent * 100), 1) if total_sent else 0,
+        'click_rate': round((total_clicked / total_sent * 100), 1) if total_sent else 0,
+        'top_campaigned_products': top_products
+    }
+
+    # 3. Product Recommendations from Catalog
+    products_df = DATA['products']
+    recommended_products = []
+    if top_crops:
+        main_crop = top_crops[0][0].capitalize()
+        for _, prod in products_df.iterrows():
+            if pd.notna(prod.get(main_crop)) and str(prod.get(main_crop, '')).strip():
+                recommended_products.append({
+                    'sku_id': prod['sku_id'],
+                    'name': prod['sku_name'],
+                    'class': prod.get('Class', ''),
+                    'target_disease': str(prod.get(main_crop, '')),
+                    'description': str(prod.get('Description', ''))[:120]
+                })
+
+    result['product_recommendations'] = recommended_products[:5]
+    result['district'] = district
+
+    return jsonify(result)
+
+# =========================================================
+# SALES TREND ANALYTICS
+# =========================================================
+
+@app.route('/api/sales-trends')
+def sales_trends():
+    district = request.args.get('district')
+    pos = DATA['pos']
+    retailers = DATA['retailers']
+
+    if district:
+        district_retailers = retailers[retailers['district'] == district]['retailer_id'].tolist()
+        filtered = pos[pos['retailer_id'].isin(district_retailers)]
+    else:
+        filtered = pos
+
+    filtered = filtered.copy()
+    filtered['week'] = filtered['transaction_date'].dt.to_period('W').dt.start_time
+    weekly = filtered.groupby('week').agg(
+        total_qty=('sku_qty', 'sum'),
+        total_revenue=('sku_price', lambda x: (x * filtered.loc[x.index, 'sku_qty']).sum()),
+        transactions=('transaction_id', 'nunique')
+    ).reset_index().sort_values('week')
+
+    # Top products by week
+    product_weekly = filtered.groupby([filtered['week'], 'sku_name'])['sku_qty'].sum().reset_index()
+    top_products = filtered.groupby('sku_name')['sku_qty'].sum().sort_values(ascending=False).head(5).index.tolist()
+
+    product_series = {}
+    for p in top_products:
+        p_data = product_weekly[product_weekly['sku_name'] == p].sort_values('week')
+        product_series[p] = {
+            'labels': [d.strftime('%d %b') for d in p_data['week']],
+            'data': p_data['sku_qty'].tolist()
+        }
+
+    return jsonify({
+        'labels': [d.strftime('%d %b') for d in weekly['week']],
+        'qty': weekly['total_qty'].tolist(),
+        'revenue': weekly['total_revenue'].tolist(),
+        'transactions': weekly['transactions'].tolist(),
+        'product_series': product_series
+    })
+
+# =========================================================
+# DIGITAL FUNNEL ANALYTICS
+# =========================================================
+
+@app.route('/api/digital-funnel')
+def digital_funnel():
+    df = DATA['digital']
+    df = df.copy()
+    df['week_start_date'] = pd.to_datetime(df['week_start_date'])
+
+    total_impressions = int(df['social_post_impression'].sum())
+    total_visits = int(df['landing_page_visits'].sum())
+    total_leads = int(df['lead_form_submission'].sum())
+
+    # Conversion rates
+    imp_to_visit = round(total_visits / total_impressions * 100, 2) if total_impressions else 0
+    visit_to_lead = round(total_leads / total_visits * 100, 2) if total_visits else 0
+    overall = round(total_leads / total_impressions * 100, 3) if total_impressions else 0
+
+    # By product
+    by_product = df.groupby('campaign_product').agg(
+        impressions=('social_post_impression', 'sum'),
+        visits=('landing_page_visits', 'sum'),
+        leads=('lead_form_submission', 'sum')
+    ).reset_index().sort_values('impressions', ascending=False)
+
+    product_data = []
+    for _, r in by_product.iterrows():
+        product_data.append({
+            'product': r['campaign_product'],
+            'impressions': int(r['impressions']),
+            'visits': int(r['visits']),
+            'leads': int(r['leads']),
+            'conversion': round(r['leads'] / r['impressions'] * 100, 2) if r['impressions'] else 0
+        })
+
+    # Weekly trend
+    weekly = df.groupby('week_start_date').agg(
+        impressions=('social_post_impression', 'sum'),
+        visits=('landing_page_visits', 'sum'),
+        leads=('lead_form_submission', 'sum')
+    ).reset_index().sort_values('week_start_date')
+
+    return jsonify({
+        'totals': {
+            'impressions': total_impressions,
+            'visits': total_visits,
+            'leads': total_leads,
+            'imp_to_visit_rate': imp_to_visit,
+            'visit_to_lead_rate': visit_to_lead,
+            'overall_rate': overall
+        },
+        'by_product': product_data[:6],
+        'weekly_trend': {
+            'labels': [d.strftime('%d %b') for d in weekly['week_start_date']],
+            'impressions': weekly['impressions'].tolist(),
+            'visits': weekly['visits'].tolist(),
+            'leads': weekly['leads'].tolist()
+        }
+    })
+
+# =========================================================
+# CHURN PREDICTION
+# =========================================================
+
+@app.route('/api/churn-prediction')
+def churn_prediction():
+    district = request.args.get('district')
+    retailers_df = DATA['retailers']
+    pos = DATA['pos']
+    visits = DATA['visits']
+
+    if district:
+        target = retailers_df[retailers_df['district'] == district]
+    else:
+        target = retailers_df.head(100)
+
+    churn_list = []
+    for _, row in target.iterrows():
+        rid = row['retailer_id']
+        r_sales = pos[pos['retailer_id'] == rid]
+
+        if r_sales.empty:
+            continue
+
+        last_date = r_sales['transaction_date'].max()
+        overall_max = pos['transaction_date'].max()
+        days_inactive = (overall_max - last_date).days
+
+        recent = r_sales[r_sales['transaction_date'] >= last_date - timedelta(days=30)]['sku_qty'].sum()
+        prev = r_sales[(r_sales['transaction_date'] < last_date - timedelta(days=30)) & (r_sales['transaction_date'] >= last_date - timedelta(days=60))]['sku_qty'].sum()
+
+        if prev > 0:
+            trend = round((recent - prev) / prev * 100, 1)
+        else:
+            trend = 0
+
+        tehsil = row['tehsil']
+        visit_count = len(visits[(visits['visit_tehsil'] == tehsil) & (visits['visit_date'] >= overall_max - timedelta(days=90))])
+
+        # Churn risk scoring
+        risk = 0
+        risk_factors = []
+        if days_inactive > 21:
+            risk += 35
+            risk_factors.append(f"{days_inactive} days since last sale")
+        if trend < -30:
+            risk += 30
+            risk_factors.append(f"Sales dropped {abs(trend)}%")
+        elif trend < -10:
+            risk += 15
+            risk_factors.append(f"Sales declining {abs(trend)}%")
+        if visit_count == 0:
+            risk += 25
+            risk_factors.append("No field visits in 90 days")
+        elif visit_count < 2:
+            risk += 10
+            risk_factors.append("Very few field visits")
+
+        risk = min(95, risk)
+
+        if risk >= 30:
+            churn_list.append({
+                'retailer_id': rid,
+                'district': row['district'],
+                'risk_score': risk,
+                'risk_level': 'CRITICAL' if risk >= 70 else ('HIGH' if risk >= 50 else 'MEDIUM'),
+                'days_inactive': days_inactive,
+                'sales_trend': trend,
+                'recent_visits': visit_count,
+                'factors': risk_factors
+            })
+
+    churn_list.sort(key=lambda x: x['risk_score'], reverse=True)
+
+    return jsonify({
+        'at_risk': churn_list[:8],
+        'total_at_risk': len(churn_list),
+        'critical_count': len([c for c in churn_list if c['risk_level'] == 'CRITICAL']),
+        'high_count': len([c for c in churn_list if c['risk_level'] == 'HIGH'])
+    })
+
+# =========================================================
+# GROWER SCAN-TO-PURCHASE ANALYTICS
+# =========================================================
+
+@app.route('/api/grower-analytics')
+def grower_analytics():
+    district = request.args.get('district')
+    growers = DATA['growers']
+
+    if district:
+        gdf = growers[growers['district'] == district]
+    else:
+        gdf = growers
+
+    total = len(gdf)
+    scanned = len(gdf[gdf['product_scan'] == True])
+    not_scanned = total - scanned
+    scan_rate = round(scanned / total * 100, 1) if total else 0
+
+    # Device breakdown
+    device_counts = gdf['device_type'].value_counts().to_dict()
+
+    # Language breakdown
+    lang_counts = gdf['language'].value_counts().head(5).to_dict()
+
+    # Farm size distribution
+    avg_farm = round(gdf['grower_farm_size'].mean(), 2) if 'grower_farm_size' in gdf.columns else 0
+
+    # Scanned products
+    scanned_products = gdf[gdf['product_scan'] == True]['product_name'].value_counts().head(5)
+    top_scanned = [{'product': p, 'count': int(c)} for p, c in scanned_products.items()]
+
+    # Offline campaign attendance
+    attended = len(gdf[gdf['offline_campaign_attended'] == True])
+    attend_rate = round(attended / total * 100, 1) if total else 0
+
+    # Age distribution
+    age_groups = {'18-30': 0, '31-45': 0, '46-60': 0, '60+': 0}
+    for age in gdf['grower_age'].dropna():
+        if age <= 30: age_groups['18-30'] += 1
+        elif age <= 45: age_groups['31-45'] += 1
+        elif age <= 60: age_groups['46-60'] += 1
+        else: age_groups['60+'] += 1
+
+    return jsonify({
+        'total_growers': total,
+        'scan_rate': scan_rate,
+        'scanned': scanned,
+        'not_scanned': not_scanned,
+        'avg_farm_size': avg_farm,
+        'device_breakdown': device_counts,
+        'language_breakdown': lang_counts,
+        'top_scanned_products': top_scanned,
+        'campaign_attendance': attended,
+        'attend_rate': attend_rate,
+        'age_distribution': age_groups
     })
 
 # =========================================================

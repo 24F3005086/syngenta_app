@@ -84,41 +84,95 @@
     </div>
 </div>
 
-<div class="row mb-5">
-    <div class="col-lg-8 mb-4 mb-lg-0">
-        <div class="card p-4 border-0 h-100" style="background: linear-gradient(145deg, rgba(15,23,42,0.9), rgba(30,41,59,0.8));">
-            <h3 class="mb-4"><i class="fa-solid fa-cloud-bolt text-info me-2"></i> Hyper-Local Weather Intelligence</h3>
-            <div id="weatherArea" class="text-center py-5">
-                <div class="text-secondary"><i class="fa-solid fa-location-dot me-2"></i> Select a location above to load weather insights</div>
+<!-- UNIFIED DISTRICT INTELLIGENCE PANEL (hidden until district selected) -->
+<div id="districtIntelligencePanel" class="d-none">
+
+    <!-- Row 1: Weather + Crop Lifecycle + Marketing Funnel -->
+    <div class="row mb-4">
+        <div class="col-lg-4 mb-4 mb-lg-0">
+            <div class="card p-4 border-0 h-100" style="background: linear-gradient(145deg, rgba(15,23,42,0.9), rgba(30,41,59,0.8));">
+                <h5 class="mb-3"><i class="fa-solid fa-cloud-bolt text-info me-2"></i> Live Weather</h5>
+                <div id="weatherArea" class="text-center py-3"></div>
+            </div>
+        </div>
+        <div class="col-lg-4 mb-4 mb-lg-0">
+            <div class="card p-4 border-0 h-100" style="background: linear-gradient(145deg, rgba(30,41,59,0.8), rgba(15,23,42,0.9)); border: 1px solid rgba(16,185,129,0.3) !important;">
+                <h5 class="mb-3"><i class="fa-solid fa-seedling text-success me-2"></i> Crop Lifecycle</h5>
+                <div id="cropLifecycleArea"></div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card p-4 border-0 h-100" style="background: linear-gradient(145deg, rgba(30,41,59,0.8), rgba(15,23,42,0.9)); border: 1px solid rgba(139,92,246,0.3) !important;">
+                <h5 class="mb-3"><i class="fa-brands fa-whatsapp text-success me-2"></i> Marketing Funnel</h5>
+                <div id="marketingArea"></div>
             </div>
         </div>
     </div>
-    <div class="col-lg-4">
-        <div class="card p-4 border-0 h-100" style="background: linear-gradient(145deg, rgba(30,41,59,0.8), rgba(15,23,42,0.9)); border: 1px solid rgba(139,92,246,0.3) !important;">
-            <h3 class="mb-3"><i class="fa-solid fa-cloud-sun text-warning me-2"></i> Demand Forecast</h3>
-            <div id="seasonName" class="text-primary mb-4 fw-bold">Loading...</div>
-            <div id="forecastArea" class="d-flex flex-column gap-3 pe-2" style="max-height: 330px; overflow-y: auto;">
+
+    <!-- Row 2: Product Recommendations from Catalog -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card p-4 border-0" style="background: linear-gradient(145deg, rgba(15,23,42,0.9), rgba(30,41,59,0.8)); border: 1px solid rgba(59,130,246,0.3) !important;">
+                <h5 class="mb-3"><i class="fa-solid fa-flask text-primary me-2"></i> AI Product Recommendations for this District</h5>
+                <div id="productRecommendationArea" class="row g-3"></div>
             </div>
         </div>
     </div>
-</div>
 
-<div class="card p-4 mb-5 border-0">
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-        <h3 class="mb-0"><i class="fa-solid fa-bullseye text-primary me-2"></i> AI Retail Prioritization</h3>
-        <button class="btn btn-primary shadow-sm" onclick="loadRecommendations()" id="generateBtn">
-            <i class="fa-solid fa-wand-magic-sparkles me-2"></i> Generate AI Recommendations
-        </button>
-    </div>
-
-    <div id="loadingState" class="text-center py-5 d-none">
-        <div class="spinner-border text-primary mb-3" role="status">
-            <span class="visually-hidden">Loading...</span>
+    <!-- Row 3: AI Prioritized Retailers -->
+    <div class="card p-4 mb-4 border-0">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+            <h5 class="mb-0"><i class="fa-solid fa-bullseye text-primary me-2"></i> AI Retail Prioritization</h5>
+            <button class="btn btn-primary btn-sm shadow-sm" onclick="loadRecommendations()" id="generateBtn">
+                <i class="fa-solid fa-wand-magic-sparkles me-2"></i> Refresh
+            </button>
         </div>
-        <h5 class="text-secondary">AI is analyzing retail points...</h5>
+        <div id="loadingState" class="text-center py-4 d-none">
+            <div class="spinner-border text-primary mb-2" role="status"></div>
+            <div class="text-secondary">AI is analyzing retail points...</div>
+        </div>
+        <div id="recommendationArea" class="row"></div>
     </div>
 
-    <div id="recommendationArea" class="row"></div>
+    <!-- Row 4: Sales Trends Chart -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card p-4 border-0" style="background: linear-gradient(145deg, rgba(15,23,42,0.9), rgba(30,41,59,0.8)); border: 1px solid rgba(245,158,11,0.3) !important;">
+                <h5 class="mb-3"><i class="fa-solid fa-chart-line text-warning me-2"></i> Sales Velocity Trends</h5>
+                <canvas id="salesTrendChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 5: Digital Funnel + Grower Analytics -->
+    <div class="row mb-4">
+        <div class="col-lg-6 mb-4 mb-lg-0">
+            <div class="card p-4 border-0 h-100" style="background: linear-gradient(145deg, rgba(30,41,59,0.8), rgba(15,23,42,0.9)); border: 1px solid rgba(236,72,153,0.3) !important;">
+                <h5 class="mb-3"><i class="fa-solid fa-filter text-pink me-2" style="color:#ec4899;"></i> Digital Conversion Funnel</h5>
+                <div id="digitalFunnelArea"></div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card p-4 border-0 h-100" style="background: linear-gradient(145deg, rgba(30,41,59,0.8), rgba(15,23,42,0.9)); border: 1px solid rgba(6,182,212,0.3) !important;">
+                <h5 class="mb-3"><i class="fa-solid fa-users text-info me-2"></i> Grower Intelligence</h5>
+                <div id="growerAnalyticsArea"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 6: Churn Prediction -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card p-4 border-0" style="background: linear-gradient(145deg, rgba(15,23,42,0.9), rgba(30,41,59,0.8)); border: 1px solid rgba(239,68,68,0.3) !important;">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0"><i class="fa-solid fa-triangle-exclamation text-danger me-2"></i> Churn Prediction Engine</h5>
+                    <div id="churnSummaryBadges"></div>
+                </div>
+                <div id="churnPredictionArea" class="row g-3"></div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -132,7 +186,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('statAlerts').innerText = stats.critical_alerts.toLocaleString();
         document.getElementById('statRevenue').innerText = '₹' + (stats.revenue_opportunity / 1000000).toFixed(1) + 'M';
     } catch(e) {}
-    // Weather Area initializes blank
     
     // Initialize Map
     try {
@@ -167,32 +220,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch(e) {
         console.error("Map load failed", e);
     }
-    
-    // Load forecast
-    try {
-        const res = await fetch('/api/forecast');
-        const data = await res.json();
-        document.getElementById('seasonName').innerText = `${data.season} (${data.month})`;
-        
-        let forecastHtml = '';
-        data.forecast.forEach(f => {
-            let demandClass = f.demand === 'HIGH' ? 'text-danger border-danger' : (f.demand === 'MEDIUM' ? 'text-warning border-warning' : 'text-success border-success');
-            forecastHtml += `
-            <div class="p-3 rounded border border-secondary border-opacity-25" style="background: rgba(0,0,0,0.2);">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <div class="fw-bold">${f.product}</div>
-                    <span class="badge bg-secondary bg-opacity-25 ${demandClass} border border-opacity-50">${f.demand} DEMAND</span>
-                </div>
-                <div class="text-secondary small mb-1"><i class="fa-solid fa-seedling me-1"></i> Crop: ${f.crop}</div>
-                <div class="small text-white opacity-75">${f.insight}</div>
-            </div>`;
-        });
-        document.getElementById('forecastArea').innerHTML = forecastHtml;
-    } catch(e) {}
-    
-    // Auto load recommendations
-    loadRecommendations();
 });
+
+let currentDistrict = null;
 
 async function loadRecommendations() {
     const btn = document.getElementById('generateBtn');
@@ -206,58 +236,42 @@ async function loadRecommendations() {
     try {
         const response = await fetch('/api/get-recommendations', {
             method:'POST',
-            headers:{
-                'Content-Type':'application/json'
-            },
-            body:JSON.stringify({})
+            headers:{ 'Content-Type':'application/json' },
+            body: JSON.stringify({ district: currentDistrict })
         });
 
         const data = await response.json();
-        
         loadingState.classList.add('d-none');
         
         let html = '';
         data.top_retailers.forEach((retailer, index) => {
             const delay = index * 0.1;
-            
-            let statusBadge = '';
-            if (retailer.health.status === 'EXCELLENT') statusBadge = 'bg-success';
-            else if (retailer.health.status === 'GOOD') statusBadge = 'bg-warning';
-            else statusBadge = 'bg-danger';
-
+            let statusBadge = retailer.health.status === 'EXCELLENT' ? 'bg-success' : (retailer.health.status === 'GOOD' ? 'bg-warning' : 'bg-danger');
             html += `
-            <div class="col-md-6 col-lg-4 mb-4" style="animation: fadeIn 0.5s ease ${delay}s both;">
-                <div class="card h-100 p-4 border-0" style="background: rgba(30, 41, 59, 0.4);">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
+            <div class="col-md-6 col-lg-4 mb-3" style="animation: fadeIn 0.5s ease ${delay}s both;">
+                <div class="card h-100 p-3 border-0" style="background: rgba(30, 41, 59, 0.4);">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
                         <div>
-                            <h4 class="mb-1 text-white">${retailer.retailer_id}</h4>
-                            <span class="badge ${statusBadge} bg-opacity-25 text-${retailer.health.color} border border-${retailer.health.color} border-opacity-50">
-                                Health: ${retailer.health.status} (${retailer.health.score})
+                            <h6 class="mb-1 text-white">${retailer.retailer_id}</h6>
+                            <span class="badge ${statusBadge} bg-opacity-25 text-${retailer.health.color} border border-${retailer.health.color} border-opacity-50 small">
+                                ${retailer.health.status} (${retailer.health.score})
                             </span>
                         </div>
-                        <div class="text-end">
-                            <span class="badge bg-danger p-2 fs-6">
-                                Priority ${retailer.priority_score}
-                            </span>
-                        </div>
+                        <span class="badge bg-danger p-2">
+                            Priority ${retailer.priority_score}
+                        </span>
                     </div>
-                    
-                    <div class="text-secondary mb-4 small flex-grow-1">
+                    <div class="text-secondary mb-3 small flex-grow-1">
                         <strong>AI Insights:</strong><br>
                         ${retailer.reason.map(r => `<i class="fa-solid fa-angle-right me-1 text-primary"></i>${r}`).join('<br>')}
                     </div>
-
-                    <div class="mt-auto pt-3 border-top border-secondary border-opacity-25">
-                        <a href="/retailer/${retailer.retailer_id}" class="btn btn-outline-primary w-100 rounded-pill">
-                            Open Intelligence Profile
-                        </a>
+                    <div class="mt-auto pt-2 border-top border-secondary border-opacity-25">
+                        <a href="/retailer/${retailer.retailer_id}" class="btn btn-outline-primary btn-sm w-100 rounded-pill">View Profile</a>
                     </div>
                 </div>
-            </div>
-            `;
+            </div>`;
         });
-
-        recommendationArea.innerHTML = html;
+        recommendationArea.innerHTML = html || '<div class="col-12 text-center text-secondary py-3">No high-priority retailers found in this district.</div>';
     } catch (error) {
         loadingState.classList.add('d-none');
         recommendationArea.innerHTML = `<div class="alert alert-danger">Error loading recommendations.</div>`;
@@ -328,6 +342,7 @@ function loadDistricts() {
 async function filterRetailers() {
     const district = document.getElementById('districtSelect').value;
     if (!district) return;
+    currentDistrict = district;
     
     document.getElementById('directoryResults').innerHTML = '';
     document.getElementById('directoryLoading').classList.remove('d-none');
@@ -336,8 +351,17 @@ async function filterRetailers() {
         const res = await fetch(`/api/filter-retailers?district=${district}`);
         const data = await res.json();
         renderDirectoryResults(data, `Showing retailers in ${district}`);
-        loadWeather(null, null, district);
     } catch(e) {}
+    
+    // Show the intelligence panel and load all data
+    document.getElementById('districtIntelligencePanel').classList.remove('d-none');
+    loadWeather(null, null, district);
+    loadDistrictIntelligence(district);
+    loadRecommendations();
+    loadSalesTrends(district);
+    loadDigitalFunnel();
+    loadGrowerAnalytics(district);
+    loadChurnPrediction(district);
 }
 
 function findNearMe() {
@@ -415,28 +439,22 @@ async function loadWeather(lat, lng, district) {
         if (data.error) throw new Error(data.error);
         
         let html = `
-        <div class="row h-100 align-items-center">
-            <div class="col-md-5 text-center border-end border-secondary border-opacity-25">
-                <i class="fa-solid ${data.icon} fa-4x mb-3"></i>
-                <div class="display-4 fw-bold text-white">${data.temperature}°C</div>
-                <div class="fs-5 text-secondary mb-2">${data.condition}</div>
-                <div class="text-info small"><i class="fa-solid fa-droplet me-1"></i> Precip: ${data.precipitation} mm</div>
-            </div>
-            <div class="col-md-7 ps-md-4 mt-4 mt-md-0">
-                <h5 class="text-white mb-3"><i class="fa-solid fa-flask text-success me-2"></i>Recommended Products</h5>
-                <div class="d-flex flex-column gap-3">
-        `;
+        <div class="text-center">
+            <i class="fa-solid ${data.icon} fa-3x mb-2"></i>
+            <div class="display-6 fw-bold text-white">${data.temperature}°C</div>
+            <div class="text-secondary mb-1">${data.condition}</div>
+            <div class="text-info small"><i class="fa-solid fa-droplet me-1"></i> ${data.precipitation} mm</div>
+        </div>
+        <hr class="border-secondary my-3">
+        <div class="small fw-bold text-white mb-2">Weather-Based Products:</div>`;
         
         data.recommendations.forEach(p => {
-            html += `
-            <div class="p-3 rounded" style="background: rgba(255,255,255,0.05); border-left: 4px solid var(--success);">
-                <div class="fw-bold text-white mb-1">${p.name}</div>
-                <div class="text-secondary small">${p.reason}</div>
-            </div>
-            `;
+            html += `<div class="p-2 rounded mb-2" style="background: rgba(255,255,255,0.05); border-left: 3px solid #10b981;">
+                <div class="fw-bold text-white small">${p.name}</div>
+                <div class="text-secondary" style="font-size: 0.75rem;">${p.reason}</div>
+            </div>`;
         });
         
-        html += `</div></div></div>`;
         weatherArea.innerHTML = html;
         
     } catch(e) {
@@ -444,6 +462,237 @@ async function loadWeather(lat, lng, district) {
     }
 }
 
+async function loadDistrictIntelligence(district) {
+    const cropArea = document.getElementById('cropLifecycleArea');
+    const marketingArea = document.getElementById('marketingArea');
+    const productArea = document.getElementById('productRecommendationArea');
+    
+    cropArea.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-success"></div></div>';
+    marketingArea.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-success"></div></div>';
+    productArea.innerHTML = '<div class="col-12 text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+    
+    try {
+        const res = await fetch(`/api/district-intelligence?district=${district}`);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        
+        // Render Crop Lifecycle
+        let cropHtml = `<div class="mb-2"><span class="text-white fw-bold">${data.crop_lifecycle.total_growers}</span> <span class="text-secondary small">Growers</span></div>`;
+        if (data.crop_lifecycle.top_crops.length) {
+            data.crop_lifecycle.top_crops.forEach(c => {
+                cropHtml += `<div class="d-flex justify-content-between align-items-center p-2 rounded mb-2" style="background:rgba(255,255,255,0.05);">
+                    <span class="text-white small"><i class="fa-solid fa-wheat-awn text-warning me-1"></i> ${c.crop}</span>
+                    <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50">${c.grower_count} growers</span>
+                </div>`;
+            });
+        } else {
+            cropHtml += '<div class="text-secondary small">No crop data available.</div>';
+        }
+        if (data.crop_lifecycle.growth_stages.length) {
+            cropHtml += '<hr class="border-secondary my-2"><div class="small fw-bold text-white mb-1">Growth Stages:</div>';
+            data.crop_lifecycle.growth_stages.forEach(s => {
+                cropHtml += `<div class="text-secondary" style="font-size:0.75rem;"><i class="fa-solid fa-circle text-info me-1" style="font-size:0.4rem;vertical-align:middle;"></i> ${s.stage}: ${s.approx}</div>`;
+            });
+        }
+        cropArea.innerHTML = cropHtml;
+        
+        // Render Marketing Funnel
+        const m = data.marketing;
+        let mHtml = `
+        <div class="d-flex justify-content-between mb-2">
+            <span class="text-secondary small">Sent</span><span class="text-white fw-bold">${m.whatsapp_sent}</span>
+        </div>
+        <div class="d-flex justify-content-between mb-2">
+            <span class="text-secondary small">Delivered</span><span class="text-white fw-bold">${m.whatsapp_delivered}</span>
+        </div>
+        <div class="d-flex justify-content-between mb-2">
+            <span class="text-secondary small">Opened</span><span class="text-info fw-bold">${m.whatsapp_opened} <small>(${m.open_rate}%)</small></span>
+        </div>
+        <div class="d-flex justify-content-between mb-3">
+            <span class="text-secondary small">Clicked</span><span class="text-success fw-bold">${m.whatsapp_clicked} <small>(${m.click_rate}%)</small></span>
+        </div>`;
+        if (m.top_campaigned_products.length) {
+            mHtml += '<div class="small fw-bold text-white mb-1">Top Promoted:</div>';
+            m.top_campaigned_products.forEach(p => {
+                mHtml += `<div class="text-secondary" style="font-size:0.75rem;"><i class="fa-solid fa-tag text-warning me-1"></i> ${p.product} (${p.count})</div>`;
+            });
+        }
+        marketingArea.innerHTML = mHtml;
+        
+        // Render Product Recommendations
+        let pHtml = '';
+        if (data.product_recommendations.length) {
+            data.product_recommendations.forEach(p => {
+                let classColor = p.class.includes('Fungicide') ? 'info' : (p.class.includes('Herbicide') ? 'warning' : 'danger');
+                pHtml += `
+                <div class="col-md-4 col-lg">
+                    <div class="p-3 rounded h-100" style="background:rgba(255,255,255,0.05); border-left: 3px solid var(--bs-${classColor});">
+                        <div class="fw-bold text-white small mb-1">${p.name}</div>
+                        <span class="badge bg-${classColor} bg-opacity-25 text-${classColor} border border-${classColor} border-opacity-50 mb-2" style="font-size:0.65rem;">${p.class}</span>
+                        <div class="text-secondary" style="font-size:0.75rem;"><i class="fa-solid fa-bug me-1"></i> ${p.target_disease}</div>
+                    </div>
+                </div>`;
+            });
+        } else {
+            pHtml = '<div class="col-12 text-center text-secondary py-2 small">No matching products for this region\'s crops.</div>';
+        }
+        productArea.innerHTML = pHtml;
+        
+    } catch(e) {
+        cropArea.innerHTML = '<div class="text-danger small">Failed to load.</div>';
+        marketingArea.innerHTML = '<div class="text-danger small">Failed to load.</div>';
+        productArea.innerHTML = '<div class="col-12 text-danger small">Failed to load product recommendations.</div>';
+    }
+}
+
+let salesChart = null;
+
+async function loadSalesTrends(district) {
+    try {
+        const res = await fetch(`/api/sales-trends?district=${district}`);
+        const data = await res.json();
+        const ctx = document.getElementById('salesTrendChart').getContext('2d');
+        if (salesChart) salesChart.destroy();
+        salesChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Units Sold',
+                    data: data.qty,
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245,158,11,0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 3,
+                    borderWidth: 2
+                }, {
+                    label: 'Transactions',
+                    data: data.transactions,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59,130,246,0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 3,
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { labels: { color: '#94a3b8' } } },
+                scales: {
+                    x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                }
+            }
+        });
+    } catch(e) { console.error('Sales trend error', e); }
+}
+
+async function loadDigitalFunnel() {
+    const area = document.getElementById('digitalFunnelArea');
+    area.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-info"></div></div>';
+    try {
+        const res = await fetch('/api/digital-funnel');
+        const data = await res.json();
+        const t = data.totals;
+        let html = `
+        <div class="mb-3">
+            <div class="d-flex align-items-center mb-2">
+                <div class="text-secondary small me-2" style="width:100px;">Impressions</div>
+                <div class="flex-grow-1"><div class="progress" style="height:20px;background:rgba(255,255,255,0.05);"><div class="progress-bar" style="width:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);">${t.impressions.toLocaleString()}</div></div></div>
+            </div>
+            <div class="d-flex align-items-center mb-2">
+                <div class="text-secondary small me-2" style="width:100px;">Page Visits</div>
+                <div class="flex-grow-1"><div class="progress" style="height:20px;background:rgba(255,255,255,0.05);"><div class="progress-bar" style="width:${t.imp_to_visit_rate}%;background:linear-gradient(90deg,#3b82f6,#06b6d4);">${t.visits.toLocaleString()} (${t.imp_to_visit_rate}%)</div></div></div>
+            </div>
+            <div class="d-flex align-items-center mb-3">
+                <div class="text-secondary small me-2" style="width:100px;">Leads</div>
+                <div class="flex-grow-1"><div class="progress" style="height:20px;background:rgba(255,255,255,0.05);"><div class="progress-bar" style="width:${Math.max(t.visit_to_lead_rate, 3)}%;background:linear-gradient(90deg,#10b981,#34d399);">${t.leads.toLocaleString()} (${t.visit_to_lead_rate}%)</div></div></div>
+            </div>
+        </div>
+        <div class="small fw-bold text-white mb-2">Campaign Performance by Product:</div>`;
+        data.by_product.forEach(p => {
+            html += `<div class="d-flex justify-content-between align-items-center p-2 rounded mb-1" style="background:rgba(255,255,255,0.04);">
+                <span class="text-white small">${p.product}</span>
+                <span class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-50">${p.conversion}% conv.</span>
+            </div>`;
+        });
+        area.innerHTML = html;
+    } catch(e) { area.innerHTML = '<div class="text-danger small">Failed to load.</div>'; }
+}
+
+async function loadGrowerAnalytics(district) {
+    const area = document.getElementById('growerAnalyticsArea');
+    area.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-info"></div></div>';
+    try {
+        const res = await fetch(`/api/grower-analytics?district=${district}`);
+        const data = await res.json();
+        let html = `
+        <div class="row g-2 mb-3">
+            <div class="col-6"><div class="p-2 rounded text-center" style="background:rgba(255,255,255,0.05);">
+                <div class="text-white fw-bold">${data.total_growers}</div><div class="text-secondary" style="font-size:0.7rem;">Total Growers</div>
+            </div></div>
+            <div class="col-6"><div class="p-2 rounded text-center" style="background:rgba(255,255,255,0.05);">
+                <div class="text-success fw-bold">${data.scan_rate}%</div><div class="text-secondary" style="font-size:0.7rem;">Product Scan Rate</div>
+            </div></div>
+            <div class="col-6"><div class="p-2 rounded text-center" style="background:rgba(255,255,255,0.05);">
+                <div class="text-info fw-bold">${data.avg_farm_size} ac</div><div class="text-secondary" style="font-size:0.7rem;">Avg Farm Size</div>
+            </div></div>
+            <div class="col-6"><div class="p-2 rounded text-center" style="background:rgba(255,255,255,0.05);">
+                <div class="text-warning fw-bold">${data.attend_rate}%</div><div class="text-secondary" style="font-size:0.7rem;">Campaign Attended</div>
+            </div></div>
+        </div>`;
+        // Device breakdown
+        html += '<div class="small fw-bold text-white mb-1">Devices:</div>';
+        Object.entries(data.device_breakdown).forEach(([k, v]) => {
+            let pct = Math.round(v / data.total_growers * 100);
+            html += `<div class="d-flex align-items-center mb-1"><span class="text-secondary small me-2" style="width:80px;">${k}</span><div class="flex-grow-1"><div class="progress" style="height:12px;background:rgba(255,255,255,0.05);"><div class="progress-bar" style="width:${pct}%;background:#06b6d4;">${pct}%</div></div></div></div>`;
+        });
+        // Top scanned products
+        if (data.top_scanned_products.length) {
+            html += '<div class="small fw-bold text-white mt-2 mb-1">Top Scanned Products:</div>';
+            data.top_scanned_products.forEach(p => {
+                html += `<div class="text-secondary" style="font-size:0.75rem;"><i class="fa-solid fa-qrcode text-success me-1"></i> ${p.product} (${p.count})</div>`;
+            });
+        }
+        area.innerHTML = html;
+    } catch(e) { area.innerHTML = '<div class="text-danger small">Failed to load.</div>'; }
+}
+
+async function loadChurnPrediction(district) {
+    const area = document.getElementById('churnPredictionArea');
+    const badges = document.getElementById('churnSummaryBadges');
+    area.innerHTML = '<div class="col-12 text-center py-3"><div class="spinner-border spinner-border-sm text-danger"></div></div>';
+    try {
+        const res = await fetch(`/api/churn-prediction?district=${district}`);
+        const data = await res.json();
+        badges.innerHTML = `
+            <span class="badge bg-danger bg-opacity-25 text-danger border border-danger border-opacity-50 me-1">${data.critical_count} Critical</span>
+            <span class="badge bg-warning bg-opacity-25 text-warning border border-warning border-opacity-50">${data.high_count} High Risk</span>`;
+        let html = '';
+        if (data.at_risk.length === 0) {
+            html = '<div class="col-12 text-center text-success py-3"><i class="fa-solid fa-shield-check me-2"></i> No churn risk detected in this district!</div>';
+        } else {
+            data.at_risk.forEach(r => {
+                let riskColor = r.risk_level === 'CRITICAL' ? 'danger' : (r.risk_level === 'HIGH' ? 'warning' : 'info');
+                html += `
+                <div class="col-md-6 col-lg-3">
+                    <div class="p-3 rounded h-100" style="background:rgba(255,255,255,0.04); border-left: 3px solid var(--bs-${riskColor});">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <a href="/retailer/${r.retailer_id}" class="text-white fw-bold small text-decoration-none">${r.retailer_id}</a>
+                            <span class="badge bg-${riskColor} bg-opacity-25 text-${riskColor} border border-${riskColor} border-opacity-50" style="font-size:0.65rem;">${r.risk_score}% Risk</span>
+                        </div>
+                        <div class="text-secondary" style="font-size:0.7rem;">
+                            ${r.factors.map(f => '<i class="fa-solid fa-exclamation-circle text-' + riskColor + ' me-1"></i>' + f).join('<br>')}
+                        </div>
+                    </div>
+                </div>`;
+            });
+        }
+        area.innerHTML = html;
+    } catch(e) { area.innerHTML = '<div class="col-12 text-danger small">Failed to load churn data.</div>'; }
+}
 
 async function sendAutoWhatsApp(retailerId, type, message, btnElement) {
     const originalHtml = btnElement.innerHTML;
