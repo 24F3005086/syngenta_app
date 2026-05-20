@@ -29,6 +29,32 @@
     </div>
 </div>
 
+<!-- AI CROP DISEASE PREDICTION -->
+<div class="row mb-5">
+    <div class="col-12">
+        <div class="card p-4 border-0" style="background: linear-gradient(145deg, rgba(15,23,42,0.9), rgba(30,41,59,0.8)); border: 1px solid rgba(16,185,129,0.3) !important;">
+            <h3 class="mb-4"><i class="fa-solid fa-leaf text-success me-2"></i> AI Crop Disease Prediction</h3>
+            <div class="row g-4">
+                <div class="col-md-5">
+                    <div class="p-3 rounded border border-secondary border-opacity-25 bg-dark bg-opacity-50">
+                        <label class="form-label text-secondary fw-bold">Upload Crop Image</label>
+                        <input type="file" class="form-control bg-dark text-white border-secondary mb-3" id="cropImage" accept="image/*">
+                        <button class="btn btn-success w-100 fw-bold shadow-sm" id="analyzeBtn" onclick="analyzeCrop()">
+                            <i class="fa-solid fa-microscope me-2"></i> Analyze Now
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-7">
+                    <div id="predictionResults" class="p-4 rounded border border-secondary border-opacity-25 h-100 d-flex flex-column justify-content-center align-items-center text-center" style="background: rgba(255,255,255,0.02);">
+                        <i class="fa-solid fa-image text-secondary opacity-50 mb-3" style="font-size: 3rem;"></i>
+                        <p class="text-secondary mb-0">Upload an image and click analyze to see AI predictions and weather-based recommendations.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row mb-5">
     <div class="col-12">
         <div class="card p-4 border-0">
@@ -736,5 +762,93 @@ async function sendAutoWhatsApp(retailerId, type, message, btnElement) {
     }
 }
 
+async function analyzeCrop() {
+    const fileInput = document.getElementById('cropImage');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const resultsArea = document.getElementById('predictionResults');
+    
+    if (!fileInput.files[0]) {
+        alert('Please select an image first.');
+        return;
+    }
+    
+    analyzeBtn.disabled = true;
+    analyzeBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Analyzing...';
+    resultsArea.innerHTML = '<div class="spinner-border text-success mb-3"></div><div class="text-secondary">Fetching geolocation and running AI model...</div>';
+    
+    if (!navigator.geolocation) {
+        alert('Geolocation is not supported by your browser. Analysis requires location data.');
+        resetBtn();
+        return;
+    }
+    
+    navigator.geolocation.getCurrentPosition(async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        
+        const formData = new FormData();
+        formData.append('image', fileInput.files[0]);
+        formData.append('latitude', lat);
+        formData.append('longitude', lng);
+        
+        try {
+            const response = await fetch('/predict', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            
+            if (response.ok) {
+                let badgeClass = data.disease.toLowerCase().includes('healthy') ? 'bg-success' : 'bg-danger';
+                let html = `
+                    <div class="w-100 text-start">
+                        <h4 class="mb-3 text-white"><i class="fa-solid fa-square-poll-vertical text-info me-2"></i> Analysis Results</h4>
+                        <div class="row g-3 mb-3">
+                            <div class="col-sm-6">
+                                <div class="p-3 rounded bg-dark bg-opacity-50 border border-secondary border-opacity-25 h-100">
+                                    <div class="small text-secondary mb-1">Detected Condition</div>
+                                    <div class="fs-5 fw-bold text-white mb-2">${data.disease.replace(/_/g, ' ')}</div>
+                                    <span class="badge ${badgeClass} bg-opacity-25 text-white border border-light border-opacity-25">Confidence: ${data.confidence}%</span>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="p-3 rounded bg-dark bg-opacity-50 border border-secondary border-opacity-25 h-100">
+                                    <div class="small text-secondary mb-1">Local Environment</div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="text-white"><i class="fa-solid fa-temperature-half text-warning me-1"></i> Temp:</span>
+                                        <span class="fw-bold text-white">${data.temperature !== null ? data.temperature + '°C' : 'N/A'}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span class="text-white"><i class="fa-solid fa-droplet text-info me-1"></i> Humidity:</span>
+                                        <span class="fw-bold text-white">${data.humidity !== null ? data.humidity + '%' : 'N/A'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-3 rounded" style="background: rgba(16, 185, 129, 0.1); border-left: 4px solid #10b981;">
+                            <div class="fw-bold text-success mb-1"><i class="fa-solid fa-lightbulb me-1"></i> AI Recommendation</div>
+                            <div class="text-white small">${data.recommendation}</div>
+                        </div>
+                    </div>
+                `;
+                resultsArea.innerHTML = html;
+            } else {
+                resultsArea.innerHTML = `<div class="alert alert-danger w-100 text-center">${data.error || 'Failed to analyze crop image'}</div>`;
+            }
+        } catch (error) {
+            resultsArea.innerHTML = `<div class="alert alert-danger w-100 text-center">Server error during analysis.</div>`;
+        } finally {
+            resetBtn();
+        }
+    }, (error) => {
+        resultsArea.innerHTML = `<div class="alert alert-warning w-100 text-center">Unable to retrieve location. Please allow location permissions and try again.</div>`;
+        resetBtn();
+    });
+    
+    function resetBtn() {
+        analyzeBtn.disabled = false;
+        analyzeBtn.innerHTML = '<i class="fa-solid fa-microscope me-2"></i> Analyze Now';
+    }
+}
 </script>
 {% endblock %}

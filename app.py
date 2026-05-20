@@ -15,6 +15,13 @@ except ImportError:
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
 
+UPLOAD_FOLDER = 'uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+from werkzeug.utils import secure_filename
+from prediction import predict_disease
+
 # =========================================================
 # LOAD DATA
 # =========================================================
@@ -1186,6 +1193,88 @@ def index():
 @app.route('/retailer/<retailer_id>')
 def retailer_page(retailer_id):
     return render_template('retailer_detail.html', retailer_id=retailer_id)
+
+# =========================================================
+# PREDICTION ROUTE
+# =========================================================
+
+@app.route('/predict', methods=['POST'])
+def predict_route():
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image provided'}), 400
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+        
+    lat = request.form.get('latitude')
+    lon = request.form.get('longitude')
+    
+    if file:
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        
+        # Predict disease using prediction.py logic
+        disease, confidence = predict_disease(filepath)
+        
+        # Fetch weather data using coordinates
+        temperature, humidity, weather_condition = None, None, None
+        if lat and lon:
+            try:
+                # Open-Meteo is a free, no-key required alternative to OpenWeatherMap
+                # Note: user mentioned OpenWeatherMap, but Open-Meteo doesn't require an API key to just work instantly.
+                # However, let's stick to OpenWeatherMap or Open-Meteo based on what's easiest. 
+                # The existing app.py code uses Open-Meteo for weather insights! Let's reuse that format.
+                url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,weather_code"
+                res = requests.get(url, timeout=5)
+                if res.status_code == 200:
+                    data = res.json()
+                    current = data.get('current', {})
+                    temperature = current.get('temperature_2m')
+                    humidity = current.get('relative_humidity_2m')
+                    weather_condition = current.get('weather_code')
+            except Exception as e:
+                print("Weather API error:", e)
+                
+        # Detailed agricultural recommendations mapping with Syngenta products
+        DISEASE_RECOMMENDATIONS = {
+            "potato___early_blight": "Remove affected leaves. Apply Syngenta Score 250 EC or Amistar 250 SC. Practice crop rotation and avoid overhead watering.",
+            "potato___late_blight": "Apply fungicide immediately (e.g., Syngenta Kavach 75 WP or Amistar 250 SC). Destroy infected plants to prevent rapid spread.",
+            "tomato_early_blight": "Remove infected lower leaves. Apply Syngenta Score 250 EC. Always water at the base of the plant.",
+            "tomato_late_blight": "Highly contagious! Apply Syngenta Kavach 75 WP or Amistar 250 SC. Remove and safely destroy infected plants immediately.",
+            "tomato_bacterial_spot": "Apply copper-based bactericides or Syngenta Amistar 250 SC. Avoid overhead watering and avoid working with plants when they are wet.",
+            "tomato_septoria_leaf_spot": "Remove diseased leaves. Improve air circulation by pruning. Apply Syngenta Kavach 75 WP or Score 250 EC.",
+            "pepper__bell___bacterial_spot": "Use appropriate Syngenta broad-spectrum treatments. Ensure good air circulation and remove any infected plant debris."
+        }
+        
+        disease_key = disease.lower()
+        
+        if "healthy" in disease_key:
+            recommendation = "Crop appears healthy! Continue regular monitoring and optimal watering."
+        else:
+            base_recommendation = DISEASE_RECOMMENDATIONS.get(disease_key, f"Disease detected: {disease}. Apply recommended targeted treatments.")
+            
+            # Context-aware weather additions
+            weather_warning = ""
+            if temperature is not None and humidity is not None:
+                if "late_blight" in disease_key and humidity > 75:
+                    weather_warning = " ⚠️ High humidity detected. Fungal spread risk is extreme. Act quickly."
+                elif "early_blight" in disease_key and temperature > 25:
+                    weather_warning = " ⚠️ Warm weather detected. Ideal conditions for early blight to spread."
+                elif "bacterial_spot" in disease_key and humidity > 70:
+                    weather_warning = " ⚠️ High humidity accelerates bacterial spread. Ensure foliage dries quickly."
+                elif humidity > 85:
+                    weather_warning = f" ⚠️ Current humidity ({humidity}%) is highly favorable for disease progression."
+            
+            recommendation = base_recommendation + weather_warning
+                
+        return jsonify({
+            'disease': disease,
+            'confidence': confidence,
+            'temperature': temperature,
+            'humidity': humidity,
+            'recommendation': recommendation
+        })
 
 # =========================================================
 # RUN

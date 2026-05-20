@@ -5,3 +5,19 @@ venv/
 env/
 .env
 .DS_Store
+
+# Temporary Model Scripts & Files
+venv_k3/
+_temp_weights2/
+*.keras
+*.h5
+dummy.png
+config.json
+metadata.json
+_check_weights.py
+_export_fixed.py
+_export_model.py
+_inspect_model.py
+_inspect_weights.py
+convert_model.py
+fix_weights.py

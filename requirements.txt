@@ -4,3 +4,6 @@ numpy
 plotly
 twilio
 requests
+pillow
+opencv-python
+tensorflow= =2.15.0 
