@@ -21,3 +21,6 @@ _inspect_model.py
 _inspect_weights.py
 convert_model.py
 fix_weights.py
+
+# User uploads
+uploads/
