@@ -57,14 +57,7 @@
         </div>
     </div>
 
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card p-4 border-0">
-                <h4 class="mb-4"><i class="fa-solid fa-chart-line text-primary me-2"></i> Inventory Trend</h4>
-                <canvas id="inventoryChart" height="80"></canvas>
-            </div>
-        </div>
-    </div>
+
 
     <div class="card p-4 border-0">
         <h4 class="mb-4"><i class="fa-solid fa-boxes-stacked text-primary me-2"></i> Recent Inventory Logs</h4>
@@ -154,48 +147,7 @@
             }
             tbody.innerHTML = rows;
 
-            // Chart.js Setup
-            if (data.inventory_records.length > 0) {
-                const chartData = [...data.inventory_records].reverse();
-                const labels = chartData.map(r => new Date(r.week_end_date).toLocaleDateString());
-                const quantities = chartData.map(r => r.sku_qty);
-                
-                const ctx = document.getElementById('inventoryChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Inventory Quantity',
-                            data: quantities,
-                            borderColor: '#0d6efd',
-                            backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                            borderWidth: 3,
-                            pointBackgroundColor: '#0d6efd',
-                            pointRadius: 4,
-                            fill: true,
-                            tension: 0.4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: { display: false }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                grid: { color: 'rgba(255,255,255,0.05)' },
-                                ticks: { color: '#94a3b8' }
-                            },
-                            x: {
-                                grid: { display: false },
-                                ticks: { color: '#94a3b8' }
-                            }
-                        }
-                    }
-                });
-            }
+
             
         } catch (error) {
             document.getElementById('loadingState').innerHTML = `<div class="alert alert-danger">Failed to load retailer data.</div>`;

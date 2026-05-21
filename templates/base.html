@@ -29,10 +29,6 @@
             Syngenta AI
         </a>
         <div class="d-flex align-items-center gap-3">
-            <form class="d-flex" onsubmit="searchRetailer(event)">
-                <input class="form-control me-2 rounded-pill bg-dark text-white border-secondary" type="search" id="retailerSearch" placeholder="Search ID (e.g. RTL_00001)" aria-label="Search" style="width: 250px;">
-                <button class="btn btn-outline-primary rounded-pill px-3" type="submit"><i class="fa-solid fa-magnifying-glass"></i></button>
-            </form>
             <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 p-2 px-3 rounded-pill">
                 <i class="fa-solid fa-robot me-2"></i>AI Copilot Active
             </span>
@@ -131,13 +127,7 @@
         }
     }
 
-    function searchRetailer(e) {
-        e.preventDefault();
-        const q = document.getElementById('retailerSearch').value.trim().toUpperCase();
-        if (q) {
-            window.location.href = '/retailer/' + q;
-        }
-    }
+
 
     async function sendMessage() {
         const input = document.getElementById('chatInput');

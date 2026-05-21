@@ -101,12 +101,13 @@
 
   <!-- ANALYTICS TAB -->
   <div class="tab-pane fade" id="analytics" role="tabpanel" aria-labelledby="analytics-tab">
-<!-- ADVANCED RETAILER DIRECTORY -->
+
+<!-- DISTRICT FILTER DROPDOWNS -->
 <div class="row mb-5">
     <div class="col-12">
         <div class="card p-4 border-0">
             <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-                <h3 class="mb-0"><i class="fa-solid fa-address-book text-success me-2"></i> Advanced Retailer Directory</h3>
+                <h3 class="mb-0"><i class="fa-solid fa-filter text-info me-2"></i> Filter by Location</h3>
             </div>
             
             <div class="row g-3 mb-4">
@@ -134,12 +135,6 @@
                 <div class="spinner-border text-info" role="status"></div>
                 <div class="text-secondary mt-2">Locating retailers...</div>
             </div>
-
-            <div class="row g-4" id="directoryResults">
-                <div class="col-12 text-center text-secondary py-5">
-                    Select a location to explore retailers.
-                </div>
-            </div>
         </div>
     </div>
 </div>
@@ -147,7 +142,45 @@
 <!-- UNIFIED DISTRICT INTELLIGENCE PANEL (hidden until district selected) -->
 <div id="districtIntelligencePanel" class="d-none">
 
-    <!-- Row 1: Weather + Crop Lifecycle + Marketing Funnel -->
+    <!-- Section 1: AI Retail Prioritization -->
+    <div class="card p-4 mb-4 border-0">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+            <h5 class="mb-0"><i class="fa-solid fa-bullseye text-primary me-2"></i> AI Retail Prioritization</h5>
+            <button class="btn btn-primary btn-sm shadow-sm" onclick="loadRecommendations()" id="generateBtn">
+                <i class="fa-solid fa-wand-magic-sparkles me-2"></i> Refresh
+            </button>
+        </div>
+        <div id="loadingState" class="text-center py-4 d-none">
+            <div class="spinner-border text-primary mb-2" role="status"></div>
+            <div class="text-secondary">AI is analyzing retail points...</div>
+        </div>
+        <div id="recommendationArea" class="row"></div>
+    </div>
+
+    <!-- Section 2: AI Product Recommendations for this District -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card p-4 border-0" style="background: linear-gradient(145deg, rgba(15,23,42,0.9), rgba(30,41,59,0.8)); border: 1px solid rgba(59,130,246,0.3) !important;">
+                <h5 class="mb-3"><i class="fa-solid fa-flask text-primary me-2"></i> AI Product Recommendations for this District</h5>
+                <div id="productRecommendationArea" class="row g-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 3: Churn Prediction Engine -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card p-4 border-0" style="background: linear-gradient(145deg, rgba(15,23,42,0.9), rgba(30,41,59,0.8)); border: 1px solid rgba(239,68,68,0.3) !important;">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0"><i class="fa-solid fa-triangle-exclamation text-danger me-2"></i> Churn Prediction Engine</h5>
+                    <div id="churnSummaryBadges"></div>
+                </div>
+                <div id="churnPredictionArea" class="row g-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 4: Live Weather + Crop Lifecycle + Marketing Funnel -->
     <div class="row mb-4">
         <div class="col-lg-4 mb-4 mb-lg-0">
             <div class="card p-4 border-0 h-100" style="background: linear-gradient(145deg, rgba(15,23,42,0.9), rgba(30,41,59,0.8));">
@@ -169,42 +202,27 @@
         </div>
     </div>
 
-    <!-- Row 2: Product Recommendations from Catalog -->
-    <div class="row mb-4">
+    <!-- Section 5: Advanced Retailer Directory -->
+    <div class="row mb-5">
         <div class="col-12">
-            <div class="card p-4 border-0" style="background: linear-gradient(145deg, rgba(15,23,42,0.9), rgba(30,41,59,0.8)); border: 1px solid rgba(59,130,246,0.3) !important;">
-                <h5 class="mb-3"><i class="fa-solid fa-flask text-primary me-2"></i> AI Product Recommendations for this District</h5>
-                <div id="productRecommendationArea" class="row g-3"></div>
+            <div class="card p-4 border-0">
+                <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+                    <h3 class="mb-0"><i class="fa-solid fa-address-book text-success me-2"></i> Advanced Retailer Directory</h3>
+                    <form class="d-flex" onsubmit="searchRetailer(event)">
+                        <input class="form-control me-2 rounded-pill bg-dark text-white border-secondary" type="search" id="retailerSearch" placeholder="Search ID (e.g. RTL_00001)" aria-label="Search" style="width: 260px;">
+                        <button class="btn btn-outline-primary rounded-pill px-3" type="submit"><i class="fa-solid fa-magnifying-glass"></i></button>
+                    </form>
+                </div>
+                <div class="row g-4" id="directoryResults">
+                    <div class="col-12 text-center text-secondary py-5">
+                        Select a location to explore retailers.
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Row 3: AI Prioritized Retailers -->
-    <div class="card p-4 mb-4 border-0">
-        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-            <h5 class="mb-0"><i class="fa-solid fa-bullseye text-primary me-2"></i> AI Retail Prioritization</h5>
-            <button class="btn btn-primary btn-sm shadow-sm" onclick="loadRecommendations()" id="generateBtn">
-                <i class="fa-solid fa-wand-magic-sparkles me-2"></i> Refresh
-            </button>
-        </div>
-        <div id="loadingState" class="text-center py-4 d-none">
-            <div class="spinner-border text-primary mb-2" role="status"></div>
-            <div class="text-secondary">AI is analyzing retail points...</div>
-        </div>
-        <div id="recommendationArea" class="row"></div>
-    </div>
-
-    <!-- Row 4: Sales Trends Chart -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card p-4 border-0" style="background: linear-gradient(145deg, rgba(15,23,42,0.9), rgba(30,41,59,0.8)); border: 1px solid rgba(245,158,11,0.3) !important;">
-                <h5 class="mb-3"><i class="fa-solid fa-chart-line text-warning me-2"></i> Sales Velocity Trends</h5>
-                <canvas id="salesTrendChart" height="100"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <!-- Row 5: Digital Funnel + Grower Analytics -->
+    <!-- Section 6: Digital Conversion Funnel + Grower Intelligence -->
     <div class="row mb-4">
         <div class="col-lg-6 mb-4 mb-lg-0">
             <div class="card p-4 border-0 h-100" style="background: linear-gradient(145deg, rgba(30,41,59,0.8), rgba(15,23,42,0.9)); border: 1px solid rgba(236,72,153,0.3) !important;">
@@ -220,15 +238,12 @@
         </div>
     </div>
 
-    <!-- Row 6: Churn Prediction -->
+    <!-- Section 7: Sales Velocity Trends -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card p-4 border-0" style="background: linear-gradient(145deg, rgba(15,23,42,0.9), rgba(30,41,59,0.8)); border: 1px solid rgba(239,68,68,0.3) !important;">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="mb-0"><i class="fa-solid fa-triangle-exclamation text-danger me-2"></i> Churn Prediction Engine</h5>
-                    <div id="churnSummaryBadges"></div>
-                </div>
-                <div id="churnPredictionArea" class="row g-3"></div>
+            <div class="card p-4 border-0" style="background: linear-gradient(145deg, rgba(15,23,42,0.9), rgba(30,41,59,0.8)); border: 1px solid rgba(245,158,11,0.3) !important;">
+                <h5 class="mb-3"><i class="fa-solid fa-chart-line text-warning me-2"></i> Sales Velocity Trends</h5>
+                <canvas id="salesTrendChart" height="100"></canvas>
             </div>
         </div>
     </div>
@@ -240,6 +255,16 @@
 
 </div>
 
+
+<script>
+function searchRetailer(e) {
+    e.preventDefault();
+    const q = document.getElementById('retailerSearch').value.trim().toUpperCase();
+    if (q) {
+        window.location.href = '/retailer/' + q;
+    }
+}
+</script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
