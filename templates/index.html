@@ -2,6 +2,25 @@
 
 {% block content %}
 
+
+<!-- TAB NAVIGATION -->
+<ul class="nav nav-tabs mb-4 border-secondary" id="appTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active text-white" id="home-tab" data-bs-toggle="tab" data-bs-target="#home" type="button" role="tab" aria-controls="home" aria-selected="true"><i class="fa-solid fa-house me-2"></i>Home</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link text-white" id="ai-tab" data-bs-toggle="tab" data-bs-target="#ai" type="button" role="tab" aria-controls="ai" aria-selected="false"><i class="fa-solid fa-leaf me-2"></i>AI Image Detection</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link text-white" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button" role="tab" aria-controls="analytics" aria-selected="false"><i class="fa-solid fa-chart-line me-2"></i>Analytics & Filtering</button>
+  </li>
+</ul>
+
+<!-- TAB CONTENT -->
+<div class="tab-content" id="appTabsContent">
+
+  <!-- HOME TAB -->
+  <div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab">
 <div class="row mb-4">
     <div class="col-md-3">
         <div class="metric-card">
@@ -29,6 +48,20 @@
     </div>
 </div>
 
+<div class="row mb-5">
+    <div class="col-12">
+        <div class="card p-4 border-0">
+            <h3 class="mb-4"><i class="fa-solid fa-map-location-dot text-info me-2"></i> Geo-Spatial Intelligence</h3>
+            <div id="retailerMap" style="height: 450px; border-radius: 12px; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.1);"></div>
+        </div>
+    </div>
+</div>
+
+
+  </div>
+
+  <!-- AI IMAGE DETECTION TAB -->
+  <div class="tab-pane fade" id="ai" role="tabpanel" aria-labelledby="ai-tab">
 <!-- AI CROP DISEASE PREDICTION -->
 <div class="row mb-5">
     <div class="col-12">
@@ -64,24 +97,16 @@
     </div>
 </div>
 
-<div class="row mb-5">
-    <div class="col-12">
-        <div class="card p-4 border-0">
-            <h3 class="mb-4"><i class="fa-solid fa-map-location-dot text-info me-2"></i> Geo-Spatial Intelligence</h3>
-            <div id="retailerMap" style="height: 450px; border-radius: 12px; background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.1);"></div>
-        </div>
-    </div>
-</div>
+  </div>
 
+  <!-- ANALYTICS TAB -->
+  <div class="tab-pane fade" id="analytics" role="tabpanel" aria-labelledby="analytics-tab">
 <!-- ADVANCED RETAILER DIRECTORY -->
 <div class="row mb-5">
     <div class="col-12">
         <div class="card p-4 border-0">
             <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
                 <h3 class="mb-0"><i class="fa-solid fa-address-book text-success me-2"></i> Advanced Retailer Directory</h3>
-                <button class="btn btn-outline-info shadow-sm" onclick="findNearMe()" id="geoBtn">
-                    <i class="fa-solid fa-location-crosshairs me-2"></i> Find Near Me
-                </button>
             </div>
             
             <div class="row g-3 mb-4">
@@ -112,7 +137,7 @@
 
             <div class="row g-4" id="directoryResults">
                 <div class="col-12 text-center text-secondary py-5">
-                    Select a location or click "Find Near Me" to explore retailers.
+                    Select a location to explore retailers.
                 </div>
             </div>
         </div>
@@ -210,7 +235,24 @@
 
 </div>
 
+
+  </div>
+
+</div>
+
+
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    var homeTab = document.getElementById('home-tab');
+    homeTab.addEventListener('shown.bs.tab', function (e) {
+        if (typeof map !== 'undefined') {
+            map.invalidateSize();
+        }
+    });
+});
+</script>
+<script>
+
 document.addEventListener('DOMContentLoaded', async () => {
     // Load dashboard stats
     try {
@@ -227,7 +269,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const mapRes = await fetch('/api/map-data');
         const mapData = await mapRes.json();
         
-        const map = L.map('retailerMap').setView([22.5, 78.5], 5);
+        window.map = L.map('retailerMap').setView([22.5, 78.5], 5);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; CARTO',
             subdomains: 'abcd',
@@ -436,7 +478,6 @@ function renderDirectoryResults(data, message) {
     let html = `<div class="col-12 text-success fw-bold mb-2"><i class="fa-solid fa-check me-2"></i>${message}</div>`;
     
     data.forEach(r => {
-        let distHtml = r.distance !== undefined ? `(${r.distance.toFixed(1)} km away)` : '';
         html += `
         <div class="col-md-4 mb-3">
             <div class="card p-3 border-secondary border-opacity-25 h-100" style="background: rgba(255,255,255,0.05);">
@@ -444,7 +485,7 @@ function renderDirectoryResults(data, message) {
                     <h5 class="mb-0 text-white">${r.retailer_id}</h5>
                     <span class="badge bg-${r.color} bg-opacity-25 text-${r.color} border border-${r.color}">${r.score}</span>
                 </div>
-                <div class="text-secondary small mb-3"><i class="fa-solid fa-map-pin me-1"></i> ${r.district} ${distHtml}</div>
+                <div class="text-secondary small mb-3"><i class="fa-solid fa-map-pin me-1"></i> ${r.district}</div>
                 <div class="mt-auto">
                     <a href="/retailer/${r.retailer_id}" class="btn btn-sm btn-outline-info w-100">View Profile</a>
                 </div>
