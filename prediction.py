@@ -12,8 +12,8 @@ try:
 
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     
-    # We load the original Keras 3 model directly now that we've upgraded requirements.txt
-    MODEL_PATH = os.path.join(BASE_DIR, "crop_model.keras")
+    # We load the exported SavedModel directory which resolves all Keras 3 to Keras 2 incompatibility issues
+    MODEL_PATH = os.path.join(BASE_DIR, "crop_model_saved")
 
     if os.path.exists(MODEL_PATH):
         print(f"Loading native SavedModel from {MODEL_PATH}...")

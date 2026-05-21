@@ -9,6 +9,7 @@ env/
 # Temporary Model Scripts & Files
 venv_k3/
 _temp_weights2/
+*.keras
 *.h5
 dummy.png
 config.json

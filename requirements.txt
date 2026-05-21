@@ -6,4 +6,4 @@ twilio
 requests
 pillow
 opencv-python
-tensorflow
+tensorflow==2.15.0 
