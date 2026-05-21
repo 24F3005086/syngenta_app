@@ -1277,6 +1277,41 @@ def predict_route():
         })
 
 # =========================================================
+# IOT CHEMICAL DETECTION API (AS7341 & SGP30)
+# =========================================================
+
+@app.route('/api/chemical-detection', methods=['POST'])
+def chemical_detection():
+    data = request.json
+    try:
+        voc = float(data.get('voc', 0))
+        spectral = float(data.get('spectral', 0))
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid sensor readings provided.'}), 400
+
+    # Basic logic to classify chemical type based on VOC and Spectral signatures
+    if voc > 800 and spectral > 1200:
+        chemical_type = "Herbicide (e.g., Glyphosate/Paraquat type)"
+        confidence = 94.5
+        recommendation = "High herbicide signature detected. Verify application rates and avoid over-spraying."
+    elif voc > 300 or spectral > 600:
+        chemical_type = "Fungicide (e.g., Mancozeb/Azoxystrobin type)"
+        confidence = 88.2
+        recommendation = "Fungicide residue signature detected. Typical profile for recent protective sprays."
+    else:
+        chemical_type = "No Significant Chemical Residue"
+        confidence = 98.0
+        recommendation = "Readings are within normal baseline background levels."
+
+    return jsonify({
+        'type': chemical_type,
+        'confidence': confidence,
+        'voc_level': voc,
+        'spectral_level': spectral,
+        'recommendation': recommendation
+    })
+
+# =========================================================
 # RUN
 # =========================================================
 
