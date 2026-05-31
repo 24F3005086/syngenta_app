@@ -1,7 +1,10 @@
 print("STARTING PREDICTION FILE")
 import os
 import numpy as np
-from PIL import Image
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
 
 # We handle import dynamically so it doesn't break if tensorflow isn't available
 try:

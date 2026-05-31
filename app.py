@@ -488,6 +488,42 @@ def chatbot():
     })
 
 # =========================================================
+# LIVE WHATSAPP CHATBOT (TWILIO WEBHOOK)
+# =========================================================
+
+from twilio.twiml.messaging_response import MessagingResponse
+
+@app.route('/api/whatsapp-webhook', methods=['POST'])
+def whatsapp_webhook():
+    """
+    This endpoint handles incoming messages from real WhatsApp users via Twilio.
+    """
+    incoming_msg = request.values.get('Body', '').strip()
+    sender = request.values.get('From', '')
+
+    print(f"📥 Received WhatsApp message from {sender}: {incoming_msg}")
+
+    # Use the existing intent detection engine
+    intent = detect_intent(incoming_msg.lower())
+
+    # We need to reuse the response logic from the web chatbot, 
+    # but strip HTML tags since WhatsApp doesn't support them.
+    # We will simulate a request to our existing chatbot function.
+    with app.test_request_context('/api/chatbot', method='POST', json={'message': incoming_msg}):
+        chatbot_resp = chatbot().get_json()
+        web_response = chatbot_resp.get('response', '')
+
+    # Convert HTML formatting to WhatsApp markdown
+    wa_response = web_response.replace('<br>', '\n').replace('<b>', '*').replace('</b>', '*')
+    wa_response = wa_response.replace('&nbsp;', ' ')
+
+    # Send response back to Twilio
+    resp = MessagingResponse()
+    resp.message(wa_response)
+    
+    return str(resp)
+
+# =========================================================
 # RETAILER DETAIL API
 # =========================================================
 
@@ -576,6 +612,22 @@ def get_locations():
         locations["India"][state] = districts
     return jsonify(locations)
 
+def get_loyalty_tier(retailer_id):
+    pos = DATA['pos']
+    sales = pos[pos['retailer_id'] == retailer_id]
+    if sales.empty:
+        return {'tier': 'Bronze', 'color': 'secondary'}
+    
+    total_qty = sales['sku_qty'].sum()
+    if total_qty > 500:
+        return {'tier': 'Platinum', 'color': 'primary'}
+    elif total_qty > 300:
+        return {'tier': 'Gold', 'color': 'warning'}
+    elif total_qty > 100:
+        return {'tier': 'Silver', 'color': 'info'}
+    else:
+        return {'tier': 'Bronze', 'color': 'secondary'}
+
 @app.route('/api/filter-retailers')
 def filter_retailers():
     district = request.args.get('district')
@@ -586,12 +638,15 @@ def filter_retailers():
     results = []
     for _, r in filtered.iterrows():
         h = calculate_health_score(r['retailer_id'])
+        tier = get_loyalty_tier(r['retailer_id'])
         results.append({
             'retailer_id': r['retailer_id'],
             'district': r['district'],
             'score': h['score'],
             'status': h['status'],
-            'color': h['color']
+            'color': h['color'],
+            'tier': tier['tier'],
+            'tier_color': tier['color']
         })
     return jsonify(results)
 
@@ -617,12 +672,15 @@ def nearby_retailers():
         
     results = sorted(results, key=lambda x: x['distance'])[:12]
     
-    # Append health scores for top results
+    # Append health scores and loyalty tier for top results
     for res in results:
         h = calculate_health_score(res['retailer_id'])
+        tier = get_loyalty_tier(res['retailer_id'])
         res['score'] = h['score']
         res['status'] = h['status']
         res['color'] = h['color']
+        res['tier'] = tier['tier']
+        res['tier_color'] = tier['color']
         
     return jsonify(results)
 
@@ -630,34 +688,54 @@ def nearby_retailers():
 def send_whatsapp():
     data = request.json
     retailer_id = data.get('retailer_id')
-    alert_type = data.get('type')
-    message_text = data.get('message')
-    
+    alert_type = data.get('type', 'ALERT')
+    message_text = data.get('message', '')
+    phone = data.get('phone', '')
+
+    # Build the alert message
+    full_message = f"🚨 SYNGENTA ALERT: {alert_type} at {retailer_id}. {message_text}. Please take action immediately."
+
+    # URL-encode the message for WhatsApp
+    import urllib.parse
+    encoded_msg = urllib.parse.quote(full_message)
+
+    # If phone number provided, create a direct WhatsApp link
+    if phone:
+        # Clean phone number (remove spaces, dashes, leading 0)
+        clean_phone = phone.strip().replace(' ', '').replace('-', '').replace('+', '')
+        if clean_phone.startswith('0'):
+            clean_phone = '91' + clean_phone[1:]
+        if not clean_phone.startswith('91'):
+            clean_phone = '91' + clean_phone
+        whatsapp_url = f"https://api.whatsapp.com/send?phone={clean_phone}&text={encoded_msg}"
+    else:
+        # No phone — open WhatsApp with just the message (user picks contact)
+        whatsapp_url = f"https://api.whatsapp.com/send?text={encoded_msg}"
+
+    # Also try Twilio if configured
     account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
     auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
-    
-    full_message = f"🚨 SYNGENTA ALERT: URGENT {alert_type} at {retailer_id}. {message_text}. Please take action immediately."
-    
+
     if account_sid and auth_token and Client:
         try:
             client = Client(account_sid, auth_token)
             message = client.messages.create(
                 from_='whatsapp:+14155238886',
                 body=full_message,
-                to='whatsapp:+919876543210' # Placeholder destination
+                to=f'whatsapp:+{clean_phone}' if phone else 'whatsapp:+919876543210'
             )
-            return jsonify({'status': 'success', 'sid': message.sid})
+            return jsonify({'status': 'success', 'sid': message.sid, 'whatsapp_url': whatsapp_url})
         except Exception as e:
             print("Twilio Error:", e)
-            return jsonify({'status': 'error', 'message': str(e)}), 500
-    else:
-        # Simulation Mode
-        print("\n" + "="*50)
-        print("📲 SIMULATING WHATSAPP MESSAGE SEND (No API Keys)")
-        print(f"TO: Territory Manager")
-        print(f"MESSAGE: {full_message}")
-        print("="*50 + "\n")
-        return jsonify({'status': 'success', 'simulation': True})
+
+    # Return WhatsApp deep-link for direct opening
+    print(f"\n📲 WhatsApp Link Generated for {retailer_id}")
+    print(f"   URL: {whatsapp_url}\n")
+    return jsonify({
+        'status': 'success',
+        'whatsapp_url': whatsapp_url,
+        'message_preview': full_message
+    })
 
 @app.route('/api/weather-insights')
 def weather_insights():
@@ -1044,6 +1122,52 @@ def digital_funnel():
     })
 
 # =========================================================
+# REVENUE & GROWTH ENGINE
+# =========================================================
+
+@app.route('/api/revenue-opportunities')
+def revenue_opportunities():
+    district = request.args.get('district')
+    if not district:
+        return jsonify([])
+
+    # 1. Weather-Triggered Campaign (Simulated Logic based on district)
+    weather_campaign = {
+        'type': 'weather',
+        'title': '🌧️ Heavy Rain Alert: High Fungicide Demand',
+        'description': f'Rain expected in {district} over the next 48 hours. Suggest broadcasting Amistar/Kavach availability to local farmers.',
+        'action_text': 'Broadcast to Farmers',
+        'action_whatsapp': f'Weather alert for {district}: High humidity detected. Apply Syngenta Amistar immediately to protect crops.'
+    }
+
+    # 2. Cross-Selling & Bundling (Simulated Logic based on season/district)
+    cross_sell = {
+        'type': 'cross_sell',
+        'title': '🛒 Tomato Sowing Season: Seed Treatment Bundle',
+        'description': f'Farmers in {district} are buying Tomato seeds. Create a bundle offer with Cruiser 350 FS to increase AOV.',
+        'action_text': 'Launch Bundle Campaign',
+        'action_whatsapp': f'Special Offer for {district}: Buy Tomato Seeds + Cruiser 350 FS together for a 10% discount!'
+    }
+
+    # 3. Auto-Replenishment (Simulated Logic based on top retailer)
+    # Find a top retailer in the district to simulate stockout risk
+    retailers = DATA['retailers'][DATA['retailers']['district'] == district]
+    if not retailers.empty:
+        r_id = retailers.iloc[0]['retailer_id']
+    else:
+        r_id = 'RTL_UNKNOWN'
+
+    replenish = {
+        'type': 'replenishment',
+        'title': f'📦 Predictive Stockout: {r_id}',
+        'description': f'{r_id} is selling Actara 25WG rapidly and will run out in 3 days. Send a 1-tap reorder link now.',
+        'action_text': 'Restock Retailer',
+        'action_whatsapp': f'Hi {r_id}, our systems predict you will run out of Actara 25WG in 3 days. Reply "REORDER" to restock now.'
+    }
+
+    return jsonify([weather_campaign, cross_sell, replenish])
+
+# =========================================================
 # CHURN PREDICTION
 # =========================================================
 
@@ -1194,6 +1318,10 @@ def index():
 def retailer_page(retailer_id):
     return render_template('retailer_detail.html', retailer_id=retailer_id)
 
+@app.route('/offline')
+def offline_page():
+    return render_template('offline.html')
+
 # =========================================================
 # PREDICTION ROUTE
 # =========================================================
@@ -1316,4 +1444,8 @@ def chemical_detection():
 # =========================================================
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    # Use an environment variable for the port; default to 5001.
+    # This avoids "Address already in use" errors when the default port is occupied.
+    import os
+    port = int(os.getenv('PORT', 5001))
+    app.run(debug=True, port=5002)

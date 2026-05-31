@@ -1,0 +1,254 @@
+<html><head><meta charset="UTF-8"><title>Team Yantragya - Syngenta AI</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+body{font-family:'Inter',sans-serif;background:#0f172a;color:#e2e8f0}
+.slide{width:100%;height:100vh;display:flex;flex-direction:column;justify-content:center;padding:60px 80px;position:relative;overflow:hidden;page-break-after:always}
+.slide::before{content:'';position:absolute;top:-50%;right:-30%;width:600px;height:600px;background:radial-gradient(circle,rgba(99,102,241,0.15),transparent 70%);border-radius:50%}
+.slide::after{content:'';position:absolute;bottom:-40%;left:-20%;width:500px;height:500px;background:radial-gradient(circle,rgba(16,185,129,0.1),transparent 70%);border-radius:50%}
+.slide>*{position:relative;z-index:1}
+h1{font-size:3.2rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#06b6d4,#10b981);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:16px;line-height:1.2}
+h2{font-size:2rem;font-weight:700;color:#6366f1;margin-bottom:24px;border-left:4px solid #6366f1;padding-left:16px}
+h3{font-size:1.3rem;font-weight:600;color:#10b981;margin-bottom:12px}
+p{font-size:1.1rem;color:#94a3b8;line-height:1.7;max-width:800px}
+.tag{display:inline-block;padding:6px 16px;border-radius:20px;font-size:0.8rem;font-weight:600;margin:4px}
+.tag-purple{background:rgba(99,102,241,0.2);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3)}
+.tag-green{background:rgba(16,185,129,0.2);color:#6ee7b7;border:1px solid rgba(16,185,129,0.3)}
+.tag-blue{background:rgba(59,130,246,0.2);color:#93c5fd;border:1px solid rgba(59,130,246,0.3)}
+.tag-red{background:rgba(239,68,68,0.2);color:#fca5a5;border:1px solid rgba(239,68,68,0.3)}
+.tag-yellow{background:rgba(245,158,11,0.2);color:#fcd34d;border:1px solid rgba(245,158,11,0.3)}
+.grid{display:grid;gap:20px;margin-top:20px}
+.grid-2{grid-template-columns:1fr 1fr}
+.grid-3{grid-template-columns:1fr 1fr 1fr}
+.grid-4{grid-template-columns:1fr 1fr 1fr 1fr}
+.card{background:rgba(30,41,59,0.6);border:1px solid rgba(99,102,241,0.15);border-radius:16px;padding:24px;backdrop-filter:blur(10px)}
+.card-accent{border-left:4px solid #6366f1}
+.card h3{margin-bottom:8px}
+.card p{font-size:0.95rem}
+.num{font-size:2.5rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.team-card{text-align:center;padding:30px 20px}
+.team-card .avatar{width:70px;height:70px;border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;color:#fff}
+.footer{position:absolute;bottom:24px;left:80px;right:80px;display:flex;justify-content:space-between;font-size:0.75rem;color:#475569;z-index:1}
+ul{list-style:none;padding:0}
+ul li{padding:8px 0;font-size:1rem;color:#94a3b8}
+ul li::before{content:'▸';color:#6366f1;margin-right:10px;font-weight:bold}
+.flow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:16px 0}
+.flow-item{background:rgba(30,41,59,0.8);border:1px solid rgba(99,102,241,0.2);padding:12px 20px;border-radius:12px;font-size:0.9rem;color:#e2e8f0}
+.flow-arrow{color:#6366f1;font-size:1.2rem;font-weight:bold}
+.bar{height:24px;border-radius:6px;margin:6px 0;display:flex;align-items:center;padding-left:12px;font-size:0.8rem;font-weight:600;color:#fff}
+table{width:100%;border-collapse:collapse;margin-top:16px}
+th{text-align:left;padding:10px 16px;background:rgba(99,102,241,0.15);color:#a5b4fc;font-size:0.85rem;border-radius:8px}
+td{padding:10px 16px;color:#94a3b8;font-size:0.9rem;border-bottom:1px solid rgba(255,255,255,0.05)}
+@media print{.slide{height:100vh;page-break-after:always;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body>
+
+<!-- SLIDE 1: TITLE -->
+<div class="slide" style="text-align:center;justify-content:center;align-items:center">
+<div style="margin-bottom:20px"><span class="tag tag-green">🌾 Syngenta Hackathon 2026</span></div>
+<h1 style="font-size:4rem;margin-bottom:8px">Syngenta AI<br>Intelligence Platform</h1>
+<p style="font-size:1.4rem;color:#6366f1;font-weight:600;margin:12px auto">Transforming Agricultural Retail with AI-Driven Decision Support</p>
+<p style="text-align:center;margin:24px auto 0;font-size:1.1rem">Team <b style="color:#10b981;font-size:1.3rem">Yantragya</b></p>
+<div style="margin-top:30px;display:flex;gap:12px;justify-content:center">
+<span class="tag tag-purple">Flask</span><span class="tag tag-green">Pandas</span><span class="tag tag-blue">Chart.js</span><span class="tag tag-yellow">Leaflet.js</span><span class="tag tag-red">CNN</span>
+</div>
+<div class="footer"><span>Team Yantragya</span><span>Slide 1 / 10</span></div>
+</div>
+
+<!-- SLIDE 2: TEAM -->
+<div class="slide">
+<h2>👥 Team Yantragya</h2>
+<div class="grid grid-4">
+<div class="card team-card"><div class="avatar" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">SM</div><h3 style="color:#e2e8f0">Sameer Mishra</h3><span class="tag tag-purple">Backend Lead</span><p style="font-size:0.8rem;margin-top:8px">Flask APIs, AI Engine, Data Pipeline, Priority Algorithm</p></div>
+<div class="card team-card"><div class="avatar" style="background:linear-gradient(135deg,#06b6d4,#3b82f6)">DS</div><h3 style="color:#e2e8f0">Divyansh Sharma</h3><span class="tag tag-blue">Frontend Lead</span><p style="font-size:0.8rem;margin-top:8px">Dashboard UI, Chart.js, Maps, Responsive Design</p></div>
+<div class="card team-card"><div class="avatar" style="background:linear-gradient(135deg,#10b981,#34d399)">RB</div><h3 style="color:#e2e8f0">Rishabh Bhathwal</h3><span class="tag tag-green">Architect</span><p style="font-size:0.8rem;margin-top:8px">System Design, API Architecture, Data Modeling</p></div>
+<div class="card team-card"><div class="avatar" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">LG</div><h3 style="color:#e2e8f0">Lakshya Gupta</h3><span class="tag tag-red">AI/ML Lead</span><p style="font-size:0.8rem;margin-top:8px">CNN Model, Churn Prediction, NLP Chatbot</p></div>
+</div>
+<div class="footer"><span>Team Yantragya</span><span>Slide 2 / 10</span></div>
+</div>
+
+<!-- SLIDE 3: PROBLEM -->
+<div class="slide">
+<h2>🎯 Problem Statement</h2>
+<div class="grid grid-2">
+<div><h3>The Challenge</h3><ul>
+<li>4,000+ retailers across India with <b style="color:#ef4444">no unified intelligence system</b></li>
+<li>Field reps visit retailers blindly — no prioritization</li>
+<li>Stockouts go undetected until it's too late</li>
+<li>WhatsApp campaigns run disconnected from retail operations</li>
+<li>No link between crop lifecycle and product demand</li>
+</ul></div>
+<div><h3>The Opportunity</h3>
+<div class="card" style="border-left:4px solid #10b981;margin-bottom:16px"><p>🌾 <b style="color:#10b981">₹500Cr+</b> revenue at risk from unoptimized retail coverage</p></div>
+<div class="card" style="border-left:4px solid #f59e0b;margin-bottom:16px"><p>⚠️ <b style="color:#f59e0b">47 retailers</b> at churn risk in Patna alone</p></div>
+<div class="card" style="border-left:4px solid #6366f1"><p>📱 <b style="color:#6366f1">3.8M</b> WhatsApp impressions with no retail correlation</p></div>
+</div></div>
+<div class="footer"><span>Team Yantragya</span><span>Slide 3 / 10</span></div>
+</div>
+
+<!-- SLIDE 4: SOLUTION -->
+<div class="slide">
+<h2>💡 Our Solution</h2>
+<p style="margin-bottom:20px">A <b style="color:#6366f1">unified AI-powered platform</b> that connects all 9 data sources into one intelligent dashboard.</p>
+<div class="grid grid-3">
+<div class="card card-accent"><div class="num">17</div><p>REST API Endpoints</p></div>
+<div class="card card-accent"><div class="num">9</div><p>Connected Datasets</p></div>
+<div class="card card-accent"><div class="num">5</div><p>AI Algorithms</p></div>
+</div>
+<div style="margin-top:30px"><h3>One-Click District Intelligence</h3>
+<div class="flow">
+<div class="flow-item">🗺️ Select District</div><span class="flow-arrow">→</span>
+<div class="flow-item">🌦️ Live Weather</div><span class="flow-arrow">→</span>
+<div class="flow-item">🌾 Crop Lifecycle</div><span class="flow-arrow">→</span>
+<div class="flow-item">💊 Product Match</div><span class="flow-arrow">→</span>
+<div class="flow-item">📊 Sales Trends</div><span class="flow-arrow">→</span>
+<div class="flow-item">⚠️ Churn Alerts</div>
+</div></div>
+<div class="footer"><span>Team Yantragya</span><span>Slide 4 / 10</span></div>
+</div>
+
+<!-- SLIDE 5: BACKEND -->
+<div class="slide">
+<h2>⚙️ Core Backend</h2>
+<div class="grid grid-2">
+<div><h3>Tech Stack</h3>
+<table><tr><th>Component</th><th>Technology</th></tr>
+<tr><td>Server</td><td style="color:#10b981">Python Flask</td></tr>
+<tr><td>Data Engine</td><td style="color:#10b981">Pandas + NumPy</td></tr>
+<tr><td>Weather API</td><td style="color:#10b981">Open-Meteo (Free)</td></tr>
+<tr><td>Voice</td><td style="color:#10b981">Web Speech API</td></tr>
+<tr><td>Maps</td><td style="color:#10b981">CARTO Tiles</td></tr>
+</table></div>
+<div><h3>Key API Endpoints</h3><ul>
+<li><code style="color:#6366f1">/api/district-intelligence</code> — Unified insights</li>
+<li><code style="color:#6366f1">/api/churn-prediction</code> — ML risk scoring</li>
+<li><code style="color:#6366f1">/api/sales-trends</code> — Time-series data</li>
+<li><code style="color:#6366f1">/api/digital-funnel</code> — Marketing analytics</li>
+<li><code style="color:#6366f1">/api/chatbot</code> — Bilingual AI Copilot</li>
+<li><code style="color:#6366f1">/api/grower-analytics</code> — Demographics</li>
+</ul></div></div>
+<div class="footer"><span>Team Yantragya</span><span>Slide 5 / 10</span></div>
+</div>
+
+<!-- SLIDE 6: FRONTEND -->
+<div class="slide">
+<h2>🎨 Core Frontend</h2>
+<div class="grid grid-2">
+<div><h3>Technologies</h3>
+<div class="card" style="margin-bottom:12px"><p>📊 <b style="color:#f59e0b">Chart.js</b> — Sales velocity time-series with gradient fills</p></div>
+<div class="card" style="margin-bottom:12px"><p>🗺️ <b style="color:#3b82f6">Leaflet.js</b> — Dark-theme geo-spatial map with 4K+ retailer markers</p></div>
+<div class="card" style="margin-bottom:12px"><p>🎨 <b style="color:#8b5cf6">Bootstrap 5</b> — Glassmorphism cards, responsive grid</p></div>
+<div class="card"><p>🎤 <b style="color:#10b981">Web Speech API</b> — Voice-enabled AI Copilot</p></div>
+</div>
+<div><h3>Dashboard Panels (on District Select)</h3><ul>
+<li>🌦️ Live Weather + Product Advice</li>
+<li>🌾 Crop Lifecycle & Growth Stages</li>
+<li>📱 WhatsApp Marketing Funnel</li>
+<li>💊 AI Product Recommendations</li>
+<li>📈 Sales Velocity Chart</li>
+<li>🔄 Digital Conversion Funnel</li>
+<li>👨‍🌾 Grower Intelligence</li>
+<li>⚠️ Churn Prediction Engine</li>
+<li>🎯 AI Retail Prioritization</li>
+</ul></div></div>
+<div class="footer"><span>Team Yantragya</span><span>Slide 6 / 10</span></div>
+</div>
+
+<!-- SLIDE 7: ARCHITECTURE -->
+<div class="slide">
+<h2>🏗️ Software Architecture</h2>
+<div class="flow" style="justify-content:center;margin:20px 0">
+<div class="flow-item" style="background:rgba(99,102,241,0.2);border-color:rgba(99,102,241,0.5)">👤 User Browser</div>
+<span class="flow-arrow">⟶</span>
+<div class="flow-item" style="background:rgba(16,185,129,0.2);border-color:rgba(16,185,129,0.5)">🐍 Flask REST API</div>
+<span class="flow-arrow">⟶</span>
+<div class="flow-item" style="background:rgba(245,158,11,0.2);border-color:rgba(245,158,11,0.5)">🐼 Pandas Engine</div>
+<span class="flow-arrow">⟶</span>
+<div class="flow-item" style="background:rgba(239,68,68,0.2);border-color:rgba(239,68,68,0.5)">📁 9 CSV Datasets</div>
+</div>
+<div class="grid grid-3" style="margin-top:20px">
+<div class="card"><h3>Presentation Layer</h3><p>HTML5, Bootstrap 5, Chart.js, Leaflet.js, FontAwesome 6</p></div>
+<div class="card"><h3>Application Layer</h3><p>Flask (17 endpoints), Health Scoring, Priority Engine, NLU Chatbot</p></div>
+<div class="card"><h3>Data Layer</h3><p>Pandas DataFrames, 9 interconnected CSVs joined on retailer_id, district, grower_id</p></div>
+</div>
+<h3 style="margin-top:24px">Data Flow: District Intelligence</h3>
+<div class="flow">
+<div class="flow-item">District Selected</div><span class="flow-arrow">→</span>
+<div class="flow-item">Filter retailers by district</div><span class="flow-arrow">→</span>
+<div class="flow-item">Join growers (same district)</div><span class="flow-arrow">→</span>
+<div class="flow-item">Parse crop calendars (JSON)</div><span class="flow-arrow">→</span>
+<div class="flow-item">Match products (catalog lookup)</div><span class="flow-arrow">→</span>
+<div class="flow-item">Return unified JSON</div>
+</div>
+<div class="footer"><span>Team Yantragya</span><span>Slide 7 / 10</span></div>
+</div>
+
+<!-- SLIDE 8: AI ALGORITHMS -->
+<div class="slide">
+<h2>🧠 AI Algorithms & Pattern Extraction</h2>
+<div class="grid grid-2">
+<div><h3>Multi-Factor Health Score (Weighted Composite)</h3>
+<div class="bar" style="width:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6)">Sales Score — 30 pts</div>
+<div class="bar" style="width:83%;background:linear-gradient(90deg,#3b82f6,#06b6d4)">Inventory Score — 25 pts</div>
+<div class="bar" style="width:83%;background:linear-gradient(90deg,#10b981,#34d399)">Campaign Score — 25 pts</div>
+<div class="bar" style="width:66%;background:linear-gradient(90deg,#f59e0b,#fbbf24)">Visit Score — 20 pts</div>
+<h3 style="margin-top:20px">Churn Prediction (Rule-Based Scoring)</h3><ul>
+<li>Inactivity >21 days → +35 risk</li>
+<li>Sales drop >30% MoM → +30 risk</li>
+<li>No field visits in 90 days → +25 risk</li>
+</ul></div>
+<div><h3>5 Extracted Patterns</h3>
+<div class="card" style="margin-bottom:10px;padding:14px"><p>1️⃣ <b style="color:#ef4444">Supply Chain Risk</b> — Inventory stockout × POS velocity cross-reference</p></div>
+<div class="card" style="margin-bottom:10px;padding:14px"><p>2️⃣ <b style="color:#f59e0b">Crop Lifecycle Demand</b> — Grower calendar → dominant crop → product match</p></div>
+<div class="card" style="margin-bottom:10px;padding:14px"><p>3️⃣ <b style="color:#10b981">Marketing-to-Retail Link</b> — WhatsApp clicks → retailer restock urgency</p></div>
+<div class="card" style="margin-bottom:10px;padding:14px"><p>4️⃣ <b style="color:#6366f1">Churn Early Warning</b> — Sales decline + visit absence = risk flag</p></div>
+<div class="card" style="padding:14px"><p>5️⃣ <b style="color:#06b6d4">Digital Funnel</b> — 3.8M impressions → 74K visits → 4.9K leads</p></div>
+</div></div>
+<div class="footer"><span>Team Yantragya</span><span>Slide 8 / 10</span></div>
+</div>
+
+<!-- SLIDE 9: CNN -->
+<div class="slide">
+<h2>🖼️ CNN — Crop Disease Detection (Future Scope)</h2>
+<div class="grid grid-2">
+<div><h3>Architecture: MobileNetV2 Transfer Learning</h3>
+<div class="flow" style="flex-direction:column;align-items:flex-start">
+<div class="flow-item" style="width:100%">📸 Input: Leaf Image (224×224×3)</div>
+<div class="flow-item" style="width:100%;margin-top:4px">🔽 MobileNetV2 Base (Pre-trained on ImageNet)</div>
+<div class="flow-item" style="width:100%;margin-top:4px">🔽 Global Average Pooling</div>
+<div class="flow-item" style="width:100%;margin-top:4px">🔽 Dense(256, ReLU) + Dropout(0.5)</div>
+<div class="flow-item" style="width:100%;margin-top:4px">🔽 Dense(38, Softmax) → Disease Class</div>
+<div class="flow-item" style="width:100%;margin-top:4px;background:rgba(16,185,129,0.2);border-color:rgba(16,185,129,0.5)">✅ Output: Disease Name → Syngenta Product Match</div>
+</div></div>
+<div><h3>Integration Flow</h3>
+<div class="card" style="margin-bottom:12px;border-left:4px solid #ef4444"><p>📷 Grower captures leaf photo via mobile</p></div>
+<div class="card" style="margin-bottom:12px;border-left:4px solid #f59e0b"><p>🧠 CNN classifies disease (e.g., Wheat Rust, Leaf Blight)</p></div>
+<div class="card" style="margin-bottom:12px;border-left:4px solid #10b981"><p>💊 System matches disease → Syngenta product from catalog</p></div>
+<div class="card" style="border-left:4px solid #6366f1"><p>📍 Nearest retailer with that product in stock is recommended</p></div>
+<h3 style="margin-top:20px">Training Details</h3>
+<table><tr><th>Parameter</th><th>Value</th></tr>
+<tr><td>Dataset</td><td>PlantVillage (54K images)</td></tr>
+<tr><td>Classes</td><td>38 disease categories</td></tr>
+<tr><td>Framework</td><td>TensorFlow / Keras</td></tr>
+<tr><td>Accuracy</td><td>~96% (transfer learning)</td></tr>
+</table></div></div>
+<div class="footer"><span>Team Yantragya</span><span>Slide 9 / 10</span></div>
+</div>
+
+<!-- SLIDE 10: THANK YOU -->
+<div class="slide" style="text-align:center;align-items:center">
+<h1 style="font-size:3.5rem">Thank You! 🙏</h1>
+<p style="font-size:1.3rem;color:#6366f1;font-weight:600;text-align:center;margin:16px auto">Team Yantragya</p>
+<div style="display:flex;gap:40px;justify-content:center;margin:30px 0">
+<div><p style="font-size:1rem;color:#e2e8f0"><b>Sameer Mishra</b></p><p style="font-size:0.8rem">Backend Lead</p></div>
+<div><p style="font-size:1rem;color:#e2e8f0"><b>Divyansh Sharma</b></p><p style="font-size:0.8rem">Frontend Lead</p></div>
+<div><p style="font-size:1rem;color:#e2e8f0"><b>Rishabh Bhathwal</b></p><p style="font-size:0.8rem">Architect</p></div>
+<div><p style="font-size:1rem;color:#e2e8f0"><b>Lakshya Gupta</b></p><p style="font-size:0.8rem">AI/ML Lead</p></div>
+</div>
+<div style="margin-top:30px;display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
+<span class="tag tag-purple">17 APIs</span><span class="tag tag-green">9 Datasets</span><span class="tag tag-blue">5 AI Algorithms</span><span class="tag tag-yellow">Bilingual Chatbot</span><span class="tag tag-red">CNN Ready</span>
+</div>
+<div style="margin-top:40px"><p style="font-size:0.9rem;text-align:center">🌾 "From Raw Data to Actionable Intelligence — One District at a Time"</p></div>
+<div class="footer"><span>Team Yantragya</span><span>Slide 10 / 10</span></div>
+</div>
+
+</body></html>

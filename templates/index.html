@@ -246,6 +246,18 @@
         </div>
     </div>
 
+    <!-- NEW Section: Business Growth Engine -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card p-4 border-0" style="background: linear-gradient(145deg, rgba(15,23,42,0.9), rgba(30,41,59,0.8)); border: 1px solid rgba(16,185,129,0.3) !important;">
+                <h5 class="mb-3 text-success"><i class="fa-solid fa-sack-dollar me-2"></i> Business Growth & Revenue Opportunities</h5>
+                <div id="revenueOpportunityArea" class="row g-3">
+                    <div class="col-12 text-center py-3"><div class="spinner-border spinner-border-sm text-success"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Section 3: Churn Prediction Engine -->
     <div class="row mb-4">
         <div class="col-12">
@@ -543,6 +555,7 @@ async function filterRetailers() {
     loadDigitalFunnel();
     loadGrowerAnalytics(district);
     loadChurnPrediction(district);
+    loadRevenueOpportunities(district);
 }
 
 function findNearMe() {
@@ -587,11 +600,17 @@ function renderDirectoryResults(data, message) {
             <div class="card p-3 border-secondary border-opacity-25 h-100" style="background: rgba(0,0,0,0.03);">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <h5 class="mb-0 text-dark">${r.retailer_id}</h5>
-                    <span class="badge bg-${r.color} bg-opacity-25 text-${r.color} border border-${r.color}">${r.score}</span>
+                    <div>
+                        <span class="badge bg-${r.tier_color} bg-opacity-25 text-${r.tier_color} border border-${r.tier_color} me-1" title="Loyalty Tier">${r.tier}</span>
+                        <span class="badge bg-${r.color} bg-opacity-25 text-${r.color} border border-${r.color}" title="Health Score">${r.score}</span>
+                    </div>
                 </div>
                 <div class="text-muted small mb-3"><i class="fa-solid fa-map-pin me-1"></i> ${r.district}</div>
-                <div class="mt-auto">
-                    <a href="/retailer/${r.retailer_id}" class="btn btn-sm btn-outline-info w-100">View Profile</a>
+                <div class="mt-auto d-flex gap-2">
+                    <a href="/retailer/${r.retailer_id}" class="btn btn-sm btn-outline-info flex-grow-1">View Profile</a>
+                    <button class="btn btn-sm btn-outline-success" onclick="sendAutoWhatsApp('${r.retailer_id}', 'CHECK_IN', 'Hello, just checking in on your store.', this)" title="Send WhatsApp">
+                        <i class="fa-brands fa-whatsapp"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -866,6 +885,9 @@ async function loadChurnPrediction(district) {
                         <div class="text-muted" style="font-size:0.7rem;">
                             ${r.factors.map(f => '<i class="fa-solid fa-exclamation-circle text-' + riskColor + ' me-1"></i>' + f).join('<br>')}
                         </div>
+                        <button class="btn btn-sm btn-outline-success mt-2 w-100" onclick="sendAutoWhatsApp('${r.retailer_id}', 'URGENT', 'We noticed some risk factors in your profile. How can we help?', this)" style="font-size:0.75rem;">
+                            <i class="fa-brands fa-whatsapp me-1"></i> Alert Retailer
+                        </button>
                     </div>
                 </div>`;
             });
@@ -874,9 +896,42 @@ async function loadChurnPrediction(district) {
     } catch(e) { area.innerHTML = '<div class="col-12 text-danger small">Failed to load churn data.</div>'; }
 }
 
+async function loadRevenueOpportunities(district) {
+    const area = document.getElementById('revenueOpportunityArea');
+    area.innerHTML = '<div class="col-12 text-center py-3"><div class="spinner-border spinner-border-sm text-success"></div></div>';
+    try {
+        const res = await fetch(`/api/revenue-opportunities?district=${district}`);
+        const data = await res.json();
+        let html = '';
+        if (data.length === 0) {
+            html = '<div class="col-12 text-center text-success py-3">No active opportunities at the moment.</div>';
+        } else {
+            data.forEach(opp => {
+                let icon = opp.type === 'weather' ? 'cloud-rain text-info' : (opp.type === 'cross_sell' ? 'cart-plus text-warning' : 'box-open text-primary');
+                html += `
+                <div class="col-md-4">
+                    <div class="p-3 rounded h-100" style="background:rgba(16,185,129,0.05); border: 1px solid rgba(16,185,129,0.2);">
+                        <h6 class="text-white mb-2"><i class="fa-solid fa-${icon} me-2"></i>${opp.title}</h6>
+                        <p class="text-secondary small mb-3">${opp.description}</p>
+                        <button class="btn btn-sm btn-success w-100" onclick="sendAutoWhatsApp('DISTRICT_${district}', '${opp.type}', '${opp.action_whatsapp}', this)">
+                            <i class="fa-brands fa-whatsapp me-1"></i> ${opp.action_text}
+                        </button>
+                    </div>
+                </div>`;
+            });
+        }
+        area.innerHTML = html;
+    } catch(e) { area.innerHTML = '<div class="col-12 text-danger small">Failed to load revenue opportunities.</div>'; }
+}
+
 async function sendAutoWhatsApp(retailerId, type, message, btnElement) {
     const originalHtml = btnElement.innerHTML;
-    btnElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Sending...';
+
+    // Prompt for phone number (optional — can skip to share via WhatsApp contact picker)
+    let phone = prompt('📱 Enter retailer phone number (e.g., 9876543210).\nLeave empty to open WhatsApp and pick a contact:');
+    if (phone === null) return; // User cancelled
+
+    btnElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Opening WhatsApp...';
     btnElement.disabled = true;
     
     try {
@@ -886,19 +941,19 @@ async function sendAutoWhatsApp(retailerId, type, message, btnElement) {
             body: JSON.stringify({
                 retailer_id: retailerId,
                 type: type,
-                message: message
+                message: message,
+                phone: phone
             })
         });
         
         const data = await response.json();
         
-        if (data.status === 'success') {
+        if (data.status === 'success' && data.whatsapp_url) {
+            // Open real WhatsApp with pre-filled message
+            window.open(data.whatsapp_url, '_blank');
             btnElement.classList.remove('btn-outline-success');
             btnElement.classList.add('btn-success');
-            btnElement.innerHTML = '<i class="fa-solid fa-check me-1"></i> Sent!';
-            if(data.simulation) {
-                console.log("WhatsApp message simulated in backend terminal.");
-            }
+            btnElement.innerHTML = '<i class="fa-brands fa-whatsapp me-1"></i> Opened!';
         } else {
             throw new Error(data.message || 'Send failed');
         }
@@ -907,13 +962,13 @@ async function sendAutoWhatsApp(retailerId, type, message, btnElement) {
         btnElement.classList.remove('btn-outline-success');
         btnElement.classList.add('btn-danger');
         btnElement.innerHTML = '<i class="fa-solid fa-xmark me-1"></i> Error';
-        setTimeout(() => {
-            btnElement.classList.remove('btn-danger');
-            btnElement.classList.add('btn-outline-success');
-            btnElement.innerHTML = originalHtml;
-            btnElement.disabled = false;
-        }, 3000);
     }
+    // Reset button after 4 seconds
+    setTimeout(() => {
+        btnElement.className = 'btn btn-outline-success btn-sm';
+        btnElement.innerHTML = originalHtml;
+        btnElement.disabled = false;
+    }, 4000);
 }
 
 async function analyzeCrop() {
