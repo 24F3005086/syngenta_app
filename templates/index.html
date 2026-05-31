@@ -927,11 +927,10 @@ async function loadRevenueOpportunities(district) {
 async function sendAutoWhatsApp(retailerId, type, message, btnElement) {
     const originalHtml = btnElement.innerHTML;
 
-    // Prompt for phone number (optional — can skip to share via WhatsApp contact picker)
-    let phone = prompt('📱 Enter retailer phone number (e.g., 9876543210).\nLeave empty to open WhatsApp and pick a contact:');
-    if (phone === null) return; // User cancelled
+    let phone = prompt('📱 Enter destination phone number (e.g., 9876543210):');
+    if (!phone) return; // User cancelled
 
-    btnElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Opening WhatsApp...';
+    btnElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Sending...';
     btnElement.disabled = true;
     
     try {
@@ -948,12 +947,19 @@ async function sendAutoWhatsApp(retailerId, type, message, btnElement) {
         
         const data = await response.json();
         
-        if (data.status === 'success' && data.whatsapp_url) {
-            // Open real WhatsApp with pre-filled message
-            window.open(data.whatsapp_url, '_blank');
-            btnElement.classList.remove('btn-outline-success');
-            btnElement.classList.add('btn-success');
-            btnElement.innerHTML = '<i class="fa-brands fa-whatsapp me-1"></i> Opened!';
+        if (data.status === 'success') {
+            if (data.sid) {
+                // Successfully sent via Twilio Bot
+                btnElement.classList.remove('btn-outline-success');
+                btnElement.classList.add('btn-success');
+                btnElement.innerHTML = '<i class="fa-solid fa-check me-1"></i> Sent via Bot!';
+            } else if (data.whatsapp_url) {
+                // Fallback: Open real WhatsApp with pre-filled message
+                window.open(data.whatsapp_url, '_blank');
+                btnElement.classList.remove('btn-outline-success');
+                btnElement.classList.add('btn-success');
+                btnElement.innerHTML = '<i class="fa-brands fa-whatsapp me-1"></i> Opened!';
+            }
         } else {
             throw new Error(data.message || 'Send failed');
         }

@@ -228,6 +228,9 @@ def detect_intent(query):
     # District/location queries
     if any(w in query for w in ['district', 'zila', 'jila', 'location', 'area', 'region', 'jagah', 'ilaka', 'state']):
         return 'district_query'
+    # Specific Tomato Disease query
+    if any(w in query for w in ['tamatar', 'tomato']) and any(w in query for w in ['peela', 'pila', 'yellow', 'sukha', 'disease', 'bimari', 'kida']):
+        return 'tomato_disease'
     # Crop queries
     if any(w in query for w in ['crop', 'fasal', 'kheti', 'wheat', 'gehun', 'rice', 'chawal', 'dhan', 'cotton', 'kapas', 'soybean', 'maize', 'makka', 'lentil', 'masoor', 'mustard', 'sarson', 'chana', 'onion', 'pyaz', 'potato', 'aloo', 'tomato', 'tamatar']):
         return 'crop_query'
@@ -327,6 +330,14 @@ def chatbot():
                 response += f"<br>🌾 Top Crops:<br>{'<br>'.join(['• ' + c.capitalize() + f' ({n} growers)' for c, n in top])}"
         else:
             response = "Aap kaunse district ke baare mein jaanna chahte hain? Mujhe district ka naam batayein (e.g., 'Patna district' ya 'Jaipur ke baare mein batao')."
+
+    elif intent == 'tomato_disease':
+        response = "🍅 <b>Tamatar (Tomato) ki Bimari ka Ilaj:</b><br><br>"
+        response += "Agar aapke tamatar ke patte peele pad rahe hain (yellowing leaves) ya unpar daag hain, toh yeh <b>Early Blight</b> ya <b>Septoria Leaf Spot</b> ho sakta hai.<br><br>"
+        response += "<b>Sujhav (Recommendation):</b><br>"
+        response += "• <b>Syngenta Amistar 250 SC</b> ya <b>Kavach 75 WP</b> ka prayog karein.<br>"
+        response += "• <i>Matra (Dose):</i> 1-2 ml prati liter pani mein milakar spray karein.<br>"
+        response += "• Khet mein paani ikkatha na hone dein aur hava ka aawagaman accha rakhein."
 
     elif intent == 'crop_query':
         crop_keywords = {'wheat': 'Wheat', 'gehun': 'Wheat', 'rice': 'Rice', 'chawal': 'Rice', 'dhan': 'Rice', 'cotton': 'Cotton', 'kapas': 'Cotton', 'soybean': 'Soybean', 'maize': 'Corn', 'makka': 'Corn', 'potato': 'Potato', 'aloo': 'Potato', 'onion': 'Onion', 'pyaz': 'Onion', 'tomato': 'Tomato', 'tamatar': 'Tomato', 'chilli': 'Chilli'}
@@ -501,7 +512,13 @@ def whatsapp_webhook():
     incoming_msg = request.values.get('Body', '').strip()
     sender = request.values.get('From', '')
 
-    print(f"📥 Received WhatsApp message from {sender}: {incoming_msg}")
+    num_media = int(request.values.get('NumMedia', 0))
+    if num_media > 0:
+        # Mock voice transcription for the hackathon demo
+        incoming_msg = "tamatar ka rang peela ho raha hai"
+        print(f"🎙️ Received Voice Note from {sender}. Transcribing to: {incoming_msg}")
+    else:
+        print(f"📥 Received WhatsApp text from {sender}: {incoming_msg}")
 
     # Use the existing intent detection engine
     intent = detect_intent(incoming_msg.lower())
@@ -703,9 +720,7 @@ def send_whatsapp():
     if phone:
         # Clean phone number (remove spaces, dashes, leading 0)
         clean_phone = phone.strip().replace(' ', '').replace('-', '').replace('+', '')
-        if clean_phone.startswith('0'):
-            clean_phone = '91' + clean_phone[1:]
-        if not clean_phone.startswith('91'):
+        if len(clean_phone) == 10:
             clean_phone = '91' + clean_phone
         whatsapp_url = f"https://api.whatsapp.com/send?phone={clean_phone}&text={encoded_msg}"
     else:
