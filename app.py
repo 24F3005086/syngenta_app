@@ -65,6 +65,8 @@ def calculate_health_score(retailer_id):
     else:
         visits = pd.DataFrame()
 
+    reasons = []
+
     sales_score = 15
     if not sales.empty:
         last_date = sales['transaction_date'].max()
@@ -75,12 +77,24 @@ def calculate_health_score(retailer_id):
         
         if ps_qty > 0:
             growth = (rs_qty - ps_qty) / ps_qty
-            if growth >= 0.1: sales_score = 30
-            elif growth >= -0.1: sales_score = 25
-            elif growth >= -0.5: sales_score = 15
-            else: sales_score = 5
+            if growth >= 0.1: 
+                sales_score = 30
+                reasons.append(f"Strong sales growth (+{int(growth*100)}% in 30 days)")
+            elif growth >= -0.1: 
+                sales_score = 25
+                reasons.append("Stable sales volume")
+            elif growth >= -0.5: 
+                sales_score = 15
+                reasons.append(f"Sales declining ({int(abs(growth)*100)}% in 30 days)")
+            else: 
+                sales_score = 5
+                reasons.append("Significant drop in sales")
         else:
             sales_score = 25 if rs_qty > 0 else 0
+            if rs_qty > 0: reasons.append("Recent sales activity detected")
+            else: reasons.append("No sales in the last 60 days")
+    else:
+        reasons.append("No POS data available")
             
     inventory_score = 25
     if not inventory.empty:
@@ -93,30 +107,56 @@ def calculate_health_score(retailer_id):
         inventory_score -= (low_count * 2)
         inventory_score = max(0, inventory_score)
         
+        if oos_count > 0: reasons.append(f"{oos_count} critical SKUs are out of stock")
+        elif low_count > 0: reasons.append(f"{low_count} SKUs have low stock")
+        else: reasons.append("Inventory levels are healthy")
+    else:
+        reasons.append("No inventory records found")
+        
     visit_score = 0
     if not visits.empty:
         recent_visits = visits[visits['visit_date'] >= visits['visit_date'].max() - timedelta(days=90)]
         vc = len(recent_visits)
-        if vc >= 5: visit_score = 20
-        elif vc >= 2: visit_score = 15
-        elif vc == 1: visit_score = 10
+        if vc >= 5: 
+            visit_score = 20
+            reasons.append("High engagement (5+ recent field visits)")
+        elif vc >= 2: 
+            visit_score = 15
+            reasons.append("Moderate engagement with reps")
+        elif vc == 1: 
+            visit_score = 10
+            reasons.append("Low engagement (only 1 recent visit)")
+        else:
+            reasons.append("No field visits in 90+ days")
+    else:
+        reasons.append("No field engagement history")
         
     campaign_score = 0
     if not visits.empty:
         campaigns = visits[visits['visit_type'] == 'campaign_conducted']
-        if len(campaigns) >= 3: campaign_score = 25
-        elif len(campaigns) >= 1: campaign_score = 15
+        if len(campaigns) >= 3: 
+            campaign_score = 25
+            reasons.append("Highly active in offline campaigns")
+        elif len(campaigns) >= 1: 
+            campaign_score = 15
+            reasons.append("Participated in offline campaigns")
         
     total = sales_score + inventory_score + visit_score + campaign_score
 
-    if total >= 80:
-        status = 'EXCELLENT'
+    if total >= 85:
+        status = 'Strategic Partner'
+        color = 'primary'
+    elif total >= 70:
+        status = 'Strong'
         color = 'success'
     elif total >= 55:
-        status = 'GOOD'
+        status = 'Average'
+        color = 'info'
+    elif total >= 40:
+        status = 'At Risk'
         color = 'warning'
     else:
-        status = 'NEEDS ATTENTION'
+        status = 'Critical'
         color = 'danger'
 
     churn_risk = 5
@@ -130,6 +170,7 @@ def calculate_health_score(retailer_id):
         'status': status,
         'color': color,
         'churn_risk': churn_risk,
+        'reasons': reasons,
         'breakdown': {
             'sales': sales_score,
             'inventory': inventory_score,
@@ -662,6 +703,7 @@ def filter_retailers():
             'score': h['score'],
             'status': h['status'],
             'color': h['color'],
+            'reasons': h.get('reasons', []),
             'tier': tier['tier'],
             'tier_color': tier['color']
         })
@@ -696,6 +738,7 @@ def nearby_retailers():
         res['score'] = h['score']
         res['status'] = h['status']
         res['color'] = h['color']
+        res['reasons'] = h.get('reasons', [])
         res['tier'] = tier['tier']
         res['tier_color'] = tier['color']
         
@@ -978,10 +1021,34 @@ def district_intelligence():
                 pass
 
     top_crops = sorted(crop_data.items(), key=lambda x: x[1], reverse=True)[:3]
+    
+    # Generate Disease Risk Alerts based on crop type
+    alerts = []
+    if any('Tomato' in c for c, n in top_crops) or any('Potato' in c for c, n in top_crops):
+        alerts.append({
+            'crop': 'Tomato/Potato',
+            'alert': 'High Humidity (85%) detected. Extreme risk of Early/Late Blight spread during current vegetative stage.',
+            'level': 'danger'
+        })
+    elif any('Cotton' in c for c, n in top_crops):
+        alerts.append({
+            'crop': 'Cotton',
+            'alert': 'Dry conditions. High risk of Whitefly infestation.',
+            'level': 'warning'
+        })
+    else:
+        if top_crops:
+            alerts.append({
+                'crop': top_crops[0][0],
+                'alert': 'Optimal weather for current growth stage. Maintain regular schedule.',
+                'level': 'success'
+            })
+            
     result['crop_lifecycle'] = {
         'total_growers': len(district_growers),
         'top_crops': [{'crop': c, 'grower_count': n} for c, n in top_crops],
-        'growth_stages': stages_info
+        'growth_stages': stages_info,
+        'disease_alerts': alerts
     }
 
     # 2. Digital Marketing Insights
@@ -1146,41 +1213,85 @@ def revenue_opportunities():
     if not district:
         return jsonify([])
 
-    # 1. Weather-Triggered Campaign (Simulated Logic based on district)
-    weather_campaign = {
-        'type': 'weather',
-        'title': '🌧️ Heavy Rain Alert: High Fungicide Demand',
-        'description': f'Rain expected in {district} over the next 48 hours. Suggest broadcasting Amistar/Kavach availability to local farmers.',
-        'action_text': 'Broadcast to Farmers',
-        'action_whatsapp': f'Weather alert for {district}: High humidity detected. Apply Syngenta Amistar immediately to protect crops.'
-    }
+    opportunities = []
 
-    # 2. Cross-Selling & Bundling (Simulated Logic based on season/district)
-    cross_sell = {
+    # Get retailers in this district
+    retailers = DATA['retailers'][DATA['retailers']['district'] == district]['retailer_id'].tolist()
+    if not retailers:
+        return jsonify([])
+
+    # 1. Crop Loss Impact Estimation (Rule-based)
+    growers = DATA['growers']
+    dist_growers = growers[growers['district'] == district]
+    total_growers = len(dist_growers)
+    
+    if total_growers > 0:
+        avg_farm_size = dist_growers['grower_farm_size'].mean() if 'grower_farm_size' in dist_growers.columns else 2.5
+        total_acres = total_growers * avg_farm_size
+        estimated_loss = total_acres * 30000 * 0.15 # Assuming ₹30k revenue/acre, 15% loss
+        
+        opportunities.append({
+            'type': 'impact_warning',
+            'title': 'Crop Loss Impact Estimation',
+            'description': f'High disease risk detected for local crops. Failure to deploy preventative fungicides across {int(total_acres)} acres in {district} may result in an estimated 15% yield reduction. Estimated financial impact: ₹{estimated_loss:,.0f}.',
+            'action_text': 'Broadcast Fungicide Alert',
+            'action_whatsapp': f'URGENT: High disease risk in {district}. Ensure your crops are protected with Syngenta fungicides to prevent severe yield loss.'
+        })
+
+    # 2. Predictive Stockout & Recommendation
+    pos = DATA['pos']
+    inv = DATA['inventory']
+    
+    dist_pos = pos[pos['retailer_id'].isin(retailers)]
+    dist_inv = inv[inv['retailer_id'].isin(retailers)]
+    
+    stockout_found = False
+    if not dist_pos.empty and not dist_inv.empty:
+        last_date = dist_pos['transaction_date'].max()
+        recent_sales = dist_pos[dist_pos['transaction_date'] >= last_date - timedelta(days=14)]
+        velocity = recent_sales.groupby(['retailer_id', 'sku_name'])['sku_qty'].sum() / 2 # qty per week
+        
+        latest_week = dist_inv['week_end_date'].max()
+        latest_inv_df = dist_inv[dist_inv['week_end_date'] == latest_week]
+        
+        for (r_id, sku), weekly_vel in velocity.items():
+            if weekly_vel > 5:
+                stock_record = latest_inv_df[(latest_inv_df['retailer_id'] == r_id) & (latest_inv_df['sku_name'] == sku)]
+                if not stock_record.empty:
+                    current_stock = stock_record.iloc[0]['sku_qty']
+                    if current_stock > 0:
+                        runway = current_stock / weekly_vel
+                        if runway < 1.0:
+                            suggested_qty = int(weekly_vel * 4)
+                            opportunities.append({
+                                'type': 'replenishment',
+                                'title': f'Predictive Stockout: {r_id}',
+                                'description': f'Selling {int(weekly_vel)} units/week. Only {current_stock} left. {r_id} will run out of {sku} in {int(runway*7)} days. Suggested restock: {suggested_qty} units.',
+                                'action_text': 'Send Restock Offer',
+                                'action_whatsapp': f'Hi {r_id}, our systems predict you will run out of {sku} soon. Reply "RESTOCK {suggested_qty}" to order now.'
+                            })
+                            stockout_found = True
+                            break
+                            
+    if not stockout_found:
+        opportunities.append({
+            'type': 'replenishment',
+            'title': 'Inventory Optimization',
+            'description': f'Review inventory levels for top retailers in {district} to ensure adequate stock for the upcoming weeks.',
+            'action_text': 'Review Inventory',
+            'action_whatsapp': 'Hello, please review your inventory levels to ensure you are ready for the season.'
+        })
+
+    # 3. Cross-Selling & Bundling
+    opportunities.append({
         'type': 'cross_sell',
-        'title': '🛒 Tomato Sowing Season: Seed Treatment Bundle',
-        'description': f'Farmers in {district} are buying Tomato seeds. Create a bundle offer with Cruiser 350 FS to increase AOV.',
+        'title': 'Seasonal Cross-Sell Opportunity',
+        'description': f'Based on historical sales, bundling insecticides with bio-stimulants increases AOV in {district} by 18%.',
         'action_text': 'Launch Bundle Campaign',
-        'action_whatsapp': f'Special Offer for {district}: Buy Tomato Seeds + Cruiser 350 FS together for a 10% discount!'
-    }
+        'action_whatsapp': f'Special Offer for {district}: Buy your essential insecticide + bio-stimulant bundle today for a 10% discount!'
+    })
 
-    # 3. Auto-Replenishment (Simulated Logic based on top retailer)
-    # Find a top retailer in the district to simulate stockout risk
-    retailers = DATA['retailers'][DATA['retailers']['district'] == district]
-    if not retailers.empty:
-        r_id = retailers.iloc[0]['retailer_id']
-    else:
-        r_id = 'RTL_UNKNOWN'
-
-    replenish = {
-        'type': 'replenishment',
-        'title': f'📦 Predictive Stockout: {r_id}',
-        'description': f'{r_id} is selling Actara 25WG rapidly and will run out in 3 days. Send a 1-tap reorder link now.',
-        'action_text': 'Restock Retailer',
-        'action_whatsapp': f'Hi {r_id}, our systems predict you will run out of Actara 25WG in 3 days. Reply "REORDER" to restock now.'
-    }
-
-    return jsonify([weather_campaign, cross_sell, replenish])
+    return jsonify(opportunities)
 
 # =========================================================
 # CHURN PREDICTION
@@ -1390,12 +1501,24 @@ def predict_route():
             "pepper__bell___bacterial_spot": "Use appropriate Syngenta broad-spectrum treatments. Ensure good air circulation and remove any infected plant debris."
         }
         
+        PRODUCT_DATA = {
+            "potato___early_blight": {"name": "Score 250 EC", "image": "/static/score_250_ec.png", "guidance": "Dose: 1-2 ml per liter of water. Spray uniformly over the foliage."},
+            "potato___late_blight": {"name": "Kavach 75 WP", "image": "/static/kavach_75_wp.png", "guidance": "Dose: 2 grams per liter of water. Ensure complete coverage of the plant."},
+            "tomato_early_blight": {"name": "Score 250 EC", "image": "/static/score_250_ec.png", "guidance": "Dose: 1-2 ml per liter of water. Spray uniformly over the foliage."},
+            "tomato_late_blight": {"name": "Amistar 250 SC", "image": "/static/amistar_250_sc.png", "guidance": "Dose: 1 ml per liter of water. Spray early morning or late evening."},
+            "tomato_bacterial_spot": {"name": "Amistar 250 SC", "image": "/static/amistar_250_sc.png", "guidance": "Dose: 1 ml per liter of water. Avoid spraying before rain."},
+            "tomato_septoria_leaf_spot": {"name": "Kavach 75 WP", "image": "/static/kavach_75_wp.png", "guidance": "Dose: 2 grams per liter of water. Apply at 7-14 day intervals."},
+            "pepper__bell___bacterial_spot": {"name": "Amistar 250 SC", "image": "/static/amistar_250_sc.png", "guidance": "Dose: 1 ml per liter of water. Spray preventatively."}
+        }
+        
         disease_key = disease.lower()
         
         if "healthy" in disease_key:
             recommendation = "Crop appears healthy! Continue regular monitoring and optimal watering."
+            product_info = None
         else:
             base_recommendation = DISEASE_RECOMMENDATIONS.get(disease_key, f"Disease detected: {disease}. Apply recommended targeted treatments.")
+            product_info = PRODUCT_DATA.get(disease_key)
             
             # Context-aware weather additions
             weather_warning = ""
@@ -1416,8 +1539,71 @@ def predict_route():
             'confidence': confidence,
             'temperature': temperature,
             'humidity': humidity,
-            'recommendation': recommendation
+            'recommendation': recommendation,
+            'product_info': product_info
         })
+
+# =========================================================
+# RETAILER MEETING INTELLIGENCE API
+# =========================================================
+
+@app.route('/api/meeting-intel/<retailer_id>')
+def get_meeting_intel(retailer_id):
+    retailer_info = DATA['retailers'][DATA['retailers']['retailer_id'] == retailer_id]
+    if retailer_info.empty:
+        return jsonify({'error': 'Retailer not found'}), 404
+        
+    tehsil = retailer_info.iloc[0]['tehsil']
+    visits = DATA['visits']
+    
+    if visits.empty or pd.isna(tehsil):
+        return jsonify({'summary': 'No visit history found.', 'actions': [], 'history': []})
+        
+    r_visits = visits[visits['visit_tehsil'] == tehsil].sort_values('visit_date', ascending=False)
+    
+    if r_visits.empty:
+        return jsonify({'summary': 'No visit history found.', 'actions': [], 'history': []})
+        
+    latest = r_visits.iloc[0]
+    days_ago = (pd.Timestamp.now() - latest['visit_date']).days
+    
+    visit_count = len(r_visits)
+    campaigns = r_visits[r_visits['visit_type'] == 'campaign_conducted']
+    
+    summary = f"Retailer has been visited {visit_count} times. "
+    if days_ago < 30:
+        summary += f"Last visit was {days_ago} days ago. "
+    else:
+        summary += f"No recent visits (last visited {days_ago} days ago). "
+        
+    if not campaigns.empty:
+        summary += f"Participated in {len(campaigns)} marketing campaigns recently. "
+        
+    actions = []
+    if days_ago > 45:
+        actions.append("Schedule a follow-up visit immediately.")
+    if len(campaigns) == 0:
+        actions.append("Pitch upcoming offline campaign participation.")
+        
+    health = calculate_health_score(retailer_id)
+    if health['score'] < 55:
+        actions.append("Address declining health score factors during next visit.")
+        
+    actions.append("Verify stock levels for top-selling SKUs.")
+    
+    history = []
+    for _, v in r_visits.head(5).iterrows():
+        history.append({
+            'date': v['visit_date'].strftime('%Y-%m-%d'),
+            'type': v['visit_type'].replace('_', ' ').title(),
+            'notes': 'Routine visit logged by field rep.' if v['visit_type'] == 'routine' else 'Campaign execution and stock check.'
+        })
+
+    return jsonify({
+        'summary': summary,
+        'actions': actions,
+        'history': history
+    })
 
 # =========================================================
 # IOT CHEMICAL DETECTION API (AS7341 & SGP30)

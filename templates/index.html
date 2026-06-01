@@ -447,7 +447,7 @@ async function loadRecommendations() {
                         <div>
                             <h6 class="mb-1 text-dark">${retailer.retailer_id}</h6>
                             <span class="badge ${statusBadge} bg-opacity-25 text-${retailer.health.color} border border-${retailer.health.color} border-opacity-50 small">
-                                ${retailer.health.status} (${retailer.health.score})
+                                ${retailer.health.status}
                             </span>
                         </div>
                         <span class="badge bg-danger p-2">
@@ -595,6 +595,13 @@ function renderDirectoryResults(data, message) {
     let html = `<div class="col-12 text-success fw-bold mb-2"><i class="fa-solid fa-check me-2"></i>${message}</div>`;
     
     data.forEach(r => {
+        let reasonsHtml = '';
+        if (r.reasons && r.reasons.length > 0) {
+            reasonsHtml = `<ul class="mb-2 ps-3 small text-muted">
+                ${r.reasons.slice(0, 3).map(reason => `<li>${reason}</li>`).join('')}
+            </ul>`;
+        }
+
         html += `
         <div class="col-md-4 mb-3">
             <div class="card p-3 border-secondary border-opacity-25 h-100" style="background: rgba(0,0,0,0.03);">
@@ -602,12 +609,16 @@ function renderDirectoryResults(data, message) {
                     <h5 class="mb-0 text-dark">${r.retailer_id}</h5>
                     <div>
                         <span class="badge bg-${r.tier_color} bg-opacity-25 text-${r.tier_color} border border-${r.tier_color} me-1" title="Loyalty Tier">${r.tier}</span>
-                        <span class="badge bg-${r.color} bg-opacity-25 text-${r.color} border border-${r.color}" title="Health Score">${r.score}</span>
+                        <span class="badge bg-${r.color} bg-opacity-25 text-${r.color} border border-${r.color}" title="Health Score">${r.status} (${r.score})</span>
                     </div>
                 </div>
-                <div class="text-muted small mb-3"><i class="fa-solid fa-map-pin me-1"></i> ${r.district}</div>
+                <div class="text-muted small mb-2"><i class="fa-solid fa-map-pin me-1"></i> ${r.district}</div>
+                ${reasonsHtml}
                 <div class="mt-auto d-flex gap-2">
                     <a href="/retailer/${r.retailer_id}" class="btn btn-sm btn-outline-info flex-grow-1">View Profile</a>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="openMeetingIntel('${r.retailer_id}')" title="Meeting Intel">
+                        <i class="fa-solid fa-clipboard-user"></i>
+                    </button>
                     <button class="btn btn-sm btn-outline-success" onclick="sendAutoWhatsApp('${r.retailer_id}', 'CHECK_IN', 'Hello, just checking in on your store.', this)" title="Send WhatsApp">
                         <i class="fa-brands fa-whatsapp"></i>
                     </button>
@@ -693,6 +704,17 @@ async function loadDistrictIntelligence(district) {
                 cropHtml += `<div class="text-muted" style="font-size:0.75rem;"><i class="fa-solid fa-circle text-info me-1" style="font-size:0.4rem;vertical-align:middle;"></i> ${s.stage}: ${s.approx}</div>`;
             });
         }
+        if (data.crop_lifecycle.disease_alerts && data.crop_lifecycle.disease_alerts.length) {
+            cropHtml += '<hr class="border-secondary my-2"><div class="small fw-bold text-dark mb-1">Disease Risk Alerts:</div>';
+            data.crop_lifecycle.disease_alerts.forEach(a => {
+                let alertIcon = a.level === 'danger' ? 'triangle-exclamation' : (a.level === 'warning' ? 'circle-exclamation' : 'check-circle');
+                cropHtml += `<div class="p-2 mb-2 rounded bg-${a.level} bg-opacity-10 border border-${a.level} border-opacity-50">
+                    <div class="fw-bold text-${a.level}" style="font-size:0.75rem;"><i class="fa-solid fa-${alertIcon} me-1"></i> ${a.crop}</div>
+                    <div class="text-dark" style="font-size:0.7rem;">${a.alert}</div>
+                </div>`;
+            });
+        }
+
         cropArea.innerHTML = cropHtml;
         
         // Render Marketing Funnel
@@ -907,10 +929,11 @@ async function loadRevenueOpportunities(district) {
             html = '<div class="col-12 text-center text-success py-3">No active opportunities at the moment.</div>';
         } else {
             data.forEach(opp => {
-                let icon = opp.type === 'weather' ? 'cloud-rain text-info' : (opp.type === 'cross_sell' ? 'cart-plus text-warning' : 'box-open text-primary');
+                let icon = opp.type === 'impact_warning' ? 'triangle-exclamation text-danger' : (opp.type === 'cross_sell' ? 'cart-plus text-warning' : 'box-open text-info');
+                let borderStyle = opp.type === 'impact_warning' ? 'border: 1px solid rgba(239,68,68,0.5); background: rgba(239,68,68,0.05);' : 'border: 1px solid rgba(16,185,129,0.2); background: rgba(16,185,129,0.05);';
                 html += `
-                <div class="col-md-4">
-                    <div class="p-3 rounded h-100" style="background:rgba(16,185,129,0.05); border: 1px solid rgba(16,185,129,0.2);">
+                <div class="${opp.type === 'impact_warning' ? 'col-12 mb-3' : 'col-md-6'}">
+                    <div class="p-3 rounded h-100" style="${borderStyle}">
                         <h6 class="text-white mb-2"><i class="fa-solid fa-${icon} me-2"></i>${opp.title}</h6>
                         <p class="text-secondary small mb-3">${opp.description}</p>
                         <button class="btn btn-sm btn-success w-100" onclick="sendAutoWhatsApp('DISTRICT_${district}', '${opp.type}', '${opp.action_whatsapp}', this)">
@@ -1063,6 +1086,15 @@ async function analyzeCrop() {
                             <div class="p-3 rounded" style="background: rgba(16, 185, 129, 0.1); border-left: 4px solid #10b981;">
                                 <div class="fw-bold text-success mb-1"><i class="fa-solid fa-lightbulb me-1"></i> AI Recommendation</div>
                                 <div class="text-dark small">${data.recommendation}</div>
+                                ${data.product_info ? `
+                                <div class="mt-3 d-flex align-items-center p-3 bg-white rounded shadow-sm border border-success border-opacity-25">
+                                    <img src="${data.product_info.image}" alt="${data.product_info.name}" class="rounded me-3 shadow-sm border border-secondary border-opacity-25" style="width: 80px; height: 80px; object-fit: contain; background: white;">
+                                    <div>
+                                        <div class="fw-bold text-success mb-1" style="font-size: 1rem;"><i class="fa-solid fa-flask text-success me-1"></i> Recommended: ${data.product_info.name}</div>
+                                        <div class="text-dark small"><i class="fa-solid fa-circle-info text-info me-1"></i> <strong>Guidance:</strong> ${data.product_info.guidance}</div>
+                                    </div>
+                                </div>
+                                ` : ''}
                             </div>
                         </div>
                     `;
@@ -1147,6 +1179,55 @@ async function analyzeChemical() {
         analyzeBtn.innerHTML = 'Identify Chemical';
     }
 }
+
+async function openMeetingIntel(retailerId) {
+    const modal = new bootstrap.Modal(document.getElementById('meetingIntelModal'));
+    modal.show();
+    
+    document.getElementById('meetingIntelTitle').innerText = retailerId;
+    const contentArea = document.getElementById('meetingIntelContent');
+    contentArea.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-success"></div></div>';
+    
+    try {
+        const res = await fetch(`/api/meeting-intel/${retailerId}`);
+        const data = await res.json();
+        
+        if (data.error) throw new Error(data.error);
+        
+        let html = `
+            <div class="mb-3 p-3 rounded" style="background: rgba(16, 185, 129, 0.1); border-left: 3px solid #10b981;">
+                <div class="fw-bold text-success mb-1"><i class="fa-solid fa-robot me-1"></i> AI Summary</div>
+                <div class="text-dark small">${data.summary}</div>
+            </div>
+        `;
+        
+        if (data.actions && data.actions.length > 0) {
+            html += `<div class="fw-bold text-dark mb-2 small">Suggested Next Actions:</div>
+            <ul class="text-muted small ps-3 mb-3">
+                ${data.actions.map(a => `<li>${a}</li>`).join('')}
+            </ul>`;
+        }
+        
+        if (data.history && data.history.length > 0) {
+            html += `<div class="fw-bold text-dark mb-2 small">Recent History:</div>`;
+            data.history.forEach(h => {
+                html += `
+                <div class="d-flex justify-content-between align-items-start border-bottom border-secondary border-opacity-10 py-2">
+                    <div>
+                        <div class="fw-bold text-dark" style="font-size:0.75rem;">${h.type}</div>
+                        <div class="text-muted" style="font-size:0.7rem;">${h.notes}</div>
+                    </div>
+                    <span class="badge bg-secondary bg-opacity-10 text-dark border border-secondary border-opacity-25" style="font-size:0.65rem;">${h.date}</span>
+                </div>`;
+            });
+        }
+        
+        contentArea.innerHTML = html;
+        
+    } catch (e) {
+        contentArea.innerHTML = '<div class="alert alert-danger w-100 text-center">Failed to load meeting intel.</div>';
+    }
+}
 </script>
 
 <!-- Sample Image Modal -->
@@ -1160,6 +1241,23 @@ async function analyzeChemical() {
       <div class="modal-body text-center">
         <img src="/static/potato_healthy.png" class="img-fluid rounded border border-secondary" alt="Sample Leaf" style="max-height: 300px; object-fit: cover;">
         <p class="text-muted small mt-3 mb-0">Notice how only a single leaf is in focus with a clean, plain background.</p>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Meeting Intel Modal -->
+<div class="modal fade" id="meetingIntelModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content bg-white border-secondary">
+      <div class="modal-header border-secondary border-opacity-25">
+        <h5 class="modal-title text-dark"><i class="fa-solid fa-clipboard-user text-primary me-2"></i>Meeting Intel: <span id="meetingIntelTitle"></span></h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="meetingIntelContent">
+        <!-- Dynamic content goes here -->
+      </div>
+      <div class="modal-footer border-secondary border-opacity-25">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
