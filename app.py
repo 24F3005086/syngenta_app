@@ -573,6 +573,7 @@ def whatsapp_webhook():
 
     # Convert HTML formatting to WhatsApp markdown
     wa_response = web_response.replace('<br>', '\n').replace('<b>', '*').replace('</b>', '*')
+    wa_response = wa_response.replace('<i>', '_').replace('</i>', '_')
     wa_response = wa_response.replace('&nbsp;', ' ')
 
     # Send response back to Twilio
