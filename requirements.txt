@@ -6,4 +6,5 @@ twilio
 requests
 pillow
 opencv-python
-tensorflow==2.15.0 gunicorn
+tensorflow==2.15.0
+gunicorn
